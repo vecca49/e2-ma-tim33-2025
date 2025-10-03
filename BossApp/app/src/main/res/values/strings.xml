@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">BossApp</string>
+    <string name="register_title">Kreiraj Nalog</string>
+    <string name="email_hint">Email</string>
+    <string name="username_hint">Korisničko ime</string>
+    <string name="password_hint">Lozinka</string>
+    <string name="confirm_password_hint">Potvrdi lozinku</string>
+    <string name="register_button">Registruj se</string>
+    <string name="already_have_account">Već imaš nalog? Prijavi se</string>
+    <string name="select_avatar">Izaberi Avatar</string>
+</resources>
