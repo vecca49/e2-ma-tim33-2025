@@ -7,6 +7,8 @@ import com.google.firebase.auth.FirebaseUser;
 import com.example.bossapp.data.local.SharedPrefsManager;
 import com.example.bossapp.data.model.User;
 import com.example.bossapp.data.repository.UserRepository;
+import com.google.firebase.auth.AuthCredential;
+import com.google.firebase.auth.EmailAuthProvider;
 
 public class AuthManager {
     private static final String TAG = "AuthManager";
@@ -24,6 +26,12 @@ public class AuthManager {
     public interface OnRegistrationListener {
         void onSuccess();
         void onUsernameExists();
+        void onError(String message);
+    }
+
+    public interface OnLoginListener {
+        void onSuccess(User user);
+        void onEmailNotVerified();
         void onError(String message);
     }
 
@@ -118,6 +126,60 @@ public class AuthManager {
         });
     }
 
+    public void loginUser(String email, String password, OnLoginListener listener) {
+        Log.d(TAG, "Pokušaj prijave za: " + email);
+
+        auth.signInWithEmailAndPassword(email, password)
+                .addOnSuccessListener(authResult -> {
+                    FirebaseUser firebaseUser = authResult.getUser();
+                    if (firebaseUser != null) {
+                        // Osveži podatke o korisniku
+                        firebaseUser.reload().addOnCompleteListener(task -> {
+                            if (task.isSuccessful()) {
+                                // Proveri da li je email verifikovan
+                                if (firebaseUser.isEmailVerified()) {
+                                    Log.d(TAG, "Email je verifikovan ✅");
+                                    // Učitaj podatke iz Firestore
+                                    loadUserData(firebaseUser.getUid(), listener);
+                                } else {
+                                    Log.d(TAG, "Email nije verifikovan ❌");
+                                    auth.signOut();
+                                    listener.onEmailNotVerified();
+                                }
+                            } else {
+                                Log.e(TAG, "Greška pri osvežavanju korisnika");
+                                auth.signOut();
+                                listener.onError("Greška pri proveri naloga");
+                            }
+                        });
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Greška pri prijavi", e);
+                    String errorMsg = parseFirebaseError(e.getMessage());
+                    listener.onError(errorMsg);
+                });
+    }
+
+    private void loadUserData(String userId, OnLoginListener listener) {
+        userRepository.getUserById(userId, new UserRepository.OnUserLoadListener() {
+            @Override
+            public void onSuccess(User user) {
+                Log.d(TAG, "Podaci korisnika učitani");
+                // Sačuvaj sesiju
+                prefsManager.saveUserId(userId);
+                listener.onSuccess(user);
+            }
+
+            @Override
+            public void onError(Exception e) {
+                Log.e(TAG, "Greška pri učitavanju podataka", e);
+                auth.signOut();
+                listener.onError("Greška pri učitavanju podataka korisnika");
+            }
+        });
+    }
+
     private String parseFirebaseError(String errorMessage) {
         if (errorMessage.contains("email address is already in use")) {
             return "Email adresa je već u upotrebi";
@@ -133,8 +195,52 @@ public class AuthManager {
         return auth.getCurrentUser();
     }
 
+
+    public boolean isUserLoggedIn() {
+        FirebaseUser user = auth.getCurrentUser();
+        return user != null && user.isEmailVerified();
+    }
+
     public void signOut() {
         auth.signOut();
         prefsManager.clearSession();
+        Log.d(TAG, "Korisnik odjavljen");
     }
+
+    // Dodaj ovaj interface i metodu u AuthManager.java
+
+    public interface OnPasswordChangeListener {
+        void onSuccess();
+        void onError(Exception e);
+    }
+
+    public void changePassword(String oldPassword, String newPassword,
+                               OnPasswordChangeListener listener) {
+        FirebaseUser user = auth.getCurrentUser();
+        if (user == null || user.getEmail() == null) {
+            listener.onError(new Exception("Korisnik nije prijavljen"));
+            return;
+        }
+
+        // Prvo re-authentikuj korisnika sa starom lozinkom
+        AuthCredential credential = EmailAuthProvider.getCredential(
+                user.getEmail(), oldPassword
+        );
+
+        user.reauthenticate(credential)
+                .addOnSuccessListener(aVoid -> {
+                    // Re-autentikacija uspešna, promeni lozinku
+                    user.updatePassword(newPassword)
+                            .addOnSuccessListener(aVoid2 -> {
+                                Log.d(TAG, "Lozinka promenjena uspešno");
+                                listener.onSuccess();
+                            })
+                            .addOnFailureListener(listener::onError);
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Re-autentikacija neuspešna", e);
+                    listener.onError(new Exception("wrong-password"));
+                });
+    }
+
 }

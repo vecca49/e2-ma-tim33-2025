@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.appbar.MaterialToolbar
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/toolbar"
+    android:layout_width="match_parent"
+    android:layout_height="?attr/actionBarSize"
+    android:background="?attr/colorPrimary"
+    android:elevation="4dp"
+    app:navigationIcon="@drawable/ic_back"
+    app:menu="@menu/menu_toolbar"
+    app:titleTextColor="@android:color/white">
+
+    <!-- Centrirana task ikonica -->
+    <ImageView
+        android:id="@+id/ivTaskIcon"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_gravity="center"
+        android:src="@drawable/task"
+        android:contentDescription="Task Icon"/>
+
+</com.google.android.material.appbar.MaterialToolbar>

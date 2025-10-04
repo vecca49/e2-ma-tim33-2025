@@ -70,10 +70,8 @@ public class RegisterActivity extends AppCompatActivity {
         btnRegister.setOnClickListener(v -> handleRegistration());
 
         tvLogin.setOnClickListener(v -> {
-            // Za sada samo Toast, kasnije dodaj LoginActivity
-            Toast.makeText(this, "Login screen - biće implementiran uskoro", Toast.LENGTH_SHORT).show();
-            // startActivity(new Intent(this, LoginActivity.class));
-            // finish();
+            startActivity(new Intent(this, LoginActivity.class));
+            finish();
         });
     }
 
@@ -100,15 +98,11 @@ public class RegisterActivity extends AppCompatActivity {
                                 "Registracija uspešna! Proveri email za verifikaciju.",
                                 Toast.LENGTH_LONG).show();
 
-                        // Za sada ostani na istom ekranu
-                        btnRegister.setEnabled(true);
-                        btnRegister.setText("Registruj se");
-
-                        // Kasnije, kada napravimo LoginActivity:
-                        // Intent intent = new Intent(RegisterActivity.this, LoginActivity.class);
-                        // intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                        // startActivity(intent);
-                        // finish();
+                        // Prebaci korisnika na Login ekran
+                        Intent intent = new Intent(RegisterActivity.this, LoginActivity.class);
+                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                        startActivity(intent);
+                        finish();
                     }
 
                     @Override

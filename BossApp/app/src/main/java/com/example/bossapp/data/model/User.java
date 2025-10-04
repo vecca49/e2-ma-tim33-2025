@@ -83,4 +83,29 @@ public class User {
 
     public boolean isEmailVerified() { return emailVerified; }
     public void setEmailVerified(boolean emailVerified) { this.emailVerified = emailVerified; }
+
+    public int getPowerPoints() {
+        return pp;
+    }
+
+    public void setPowerPoints(int powerPoints) {
+        this.pp = powerPoints;
+    }
+
+    public int getExperiencePoints() {
+        return xp;
+    }
+
+    public void setExperiencePoints(int experiencePoints) {
+        this.xp = experiencePoints;
+    }
+
+    public int getBadges() {
+        // Za sada vraćaj 0, kasnije ćeš implementirati badges sistem
+        return 0;
+    }
+
+    public void setBadges(int badges) {
+        // TODO: Implement badges later
+    }
 }
