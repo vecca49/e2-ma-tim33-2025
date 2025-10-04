@@ -27,6 +27,12 @@ public class AuthManager {
         void onError(String message);
     }
 
+    public interface OnLoginListener {
+        void onSuccess(User user);
+        void onEmailNotVerified();
+        void onError(String message);
+    }
+
     public void registerUser(String email, String password, String username,
                              int avatarIndex, OnRegistrationListener listener) {
 
@@ -118,6 +124,60 @@ public class AuthManager {
         });
     }
 
+    public void loginUser(String email, String password, OnLoginListener listener) {
+        Log.d(TAG, "Pokušaj prijave za: " + email);
+
+        auth.signInWithEmailAndPassword(email, password)
+                .addOnSuccessListener(authResult -> {
+                    FirebaseUser firebaseUser = authResult.getUser();
+                    if (firebaseUser != null) {
+                        // Osveži podatke o korisniku
+                        firebaseUser.reload().addOnCompleteListener(task -> {
+                            if (task.isSuccessful()) {
+                                // Proveri da li je email verifikovan
+                                if (firebaseUser.isEmailVerified()) {
+                                    Log.d(TAG, "Email je verifikovan ✅");
+                                    // Učitaj podatke iz Firestore
+                                    loadUserData(firebaseUser.getUid(), listener);
+                                } else {
+                                    Log.d(TAG, "Email nije verifikovan ❌");
+                                    auth.signOut();
+                                    listener.onEmailNotVerified();
+                                }
+                            } else {
+                                Log.e(TAG, "Greška pri osvežavanju korisnika");
+                                auth.signOut();
+                                listener.onError("Greška pri proveri naloga");
+                            }
+                        });
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Greška pri prijavi", e);
+                    String errorMsg = parseFirebaseError(e.getMessage());
+                    listener.onError(errorMsg);
+                });
+    }
+
+    private void loadUserData(String userId, OnLoginListener listener) {
+        userRepository.getUserById(userId, new UserRepository.OnUserLoadListener() {
+            @Override
+            public void onSuccess(User user) {
+                Log.d(TAG, "Podaci korisnika učitani");
+                // Sačuvaj sesiju
+                prefsManager.saveUserId(userId);
+                listener.onSuccess(user);
+            }
+
+            @Override
+            public void onError(Exception e) {
+                Log.e(TAG, "Greška pri učitavanju podataka", e);
+                auth.signOut();
+                listener.onError("Greška pri učitavanju podataka korisnika");
+            }
+        });
+    }
+
     private String parseFirebaseError(String errorMessage) {
         if (errorMessage.contains("email address is already in use")) {
             return "Email adresa je već u upotrebi";
@@ -133,8 +193,15 @@ public class AuthManager {
         return auth.getCurrentUser();
     }
 
+
+    public boolean isUserLoggedIn() {
+        FirebaseUser user = auth.getCurrentUser();
+        return user != null && user.isEmailVerified();
+    }
+
     public void signOut() {
         auth.signOut();
         prefsManager.clearSession();
+        Log.d(TAG, "Korisnik odjavljen");
     }
 }
