@@ -7,6 +7,8 @@ import com.google.firebase.auth.FirebaseUser;
 import com.example.bossapp.data.local.SharedPrefsManager;
 import com.example.bossapp.data.model.User;
 import com.example.bossapp.data.repository.UserRepository;
+import com.google.firebase.auth.AuthCredential;
+import com.google.firebase.auth.EmailAuthProvider;
 
 public class AuthManager {
     private static final String TAG = "AuthManager";
@@ -204,4 +206,41 @@ public class AuthManager {
         prefsManager.clearSession();
         Log.d(TAG, "Korisnik odjavljen");
     }
+
+    // Dodaj ovaj interface i metodu u AuthManager.java
+
+    public interface OnPasswordChangeListener {
+        void onSuccess();
+        void onError(Exception e);
+    }
+
+    public void changePassword(String oldPassword, String newPassword,
+                               OnPasswordChangeListener listener) {
+        FirebaseUser user = auth.getCurrentUser();
+        if (user == null || user.getEmail() == null) {
+            listener.onError(new Exception("Korisnik nije prijavljen"));
+            return;
+        }
+
+        // Prvo re-authentikuj korisnika sa starom lozinkom
+        AuthCredential credential = EmailAuthProvider.getCredential(
+                user.getEmail(), oldPassword
+        );
+
+        user.reauthenticate(credential)
+                .addOnSuccessListener(aVoid -> {
+                    // Re-autentikacija uspešna, promeni lozinku
+                    user.updatePassword(newPassword)
+                            .addOnSuccessListener(aVoid2 -> {
+                                Log.d(TAG, "Lozinka promenjena uspešno");
+                                listener.onSuccess();
+                            })
+                            .addOnFailureListener(listener::onError);
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Re-autentikacija neuspešna", e);
+                    listener.onError(new Exception("wrong-password"));
+                });
+    }
+
 }

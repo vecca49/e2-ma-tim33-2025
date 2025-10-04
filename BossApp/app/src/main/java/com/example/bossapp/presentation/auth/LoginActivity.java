@@ -7,8 +7,10 @@ import android.util.Patterns;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.example.bossapp.MainActivity;
 import com.example.bossapp.R;
 import com.example.bossapp.business.AuthManager;
 import com.google.android.material.button.MaterialButton;
@@ -30,6 +32,14 @@ public class LoginActivity extends AppCompatActivity {
         setupClickListeners();
 
         authManager = new AuthManager(this);
+
+        // Handle back button
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                finishAffinity();
+            }
+        });
 
         // Proveri da li je korisnik već ulogovan
         if (authManager.isUserLoggedIn()) {
@@ -123,17 +133,15 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void navigateToMainActivity() {
-        // TODO: Zameni sa pravim MainActivity kada ga napraviš
-        Toast.makeText(this, "Uspešna prijava! MainActivity još nije implementiran.", Toast.LENGTH_LONG).show();
-        // Intent intent = new Intent(this, MainActivity.class);
-        // intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        // startActivity(intent);
-        // finish();
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
     }
 
-    @Override
+    /*@Override
     public void onBackPressed() {
-        // Onemogući back button na login ekranu
+        super.onBackPressed();
         finishAffinity();
-    }
+    }*/
 }
