@@ -19,9 +19,11 @@ import androidx.annotation.Nullable;
 import com.example.bossapp.R;
 import com.example.bossapp.business.QRCodeManager;
 import com.example.bossapp.data.model.User;
+import com.example.bossapp.data.repository.FriendRepository;
 import com.example.bossapp.data.repository.UserRepository;
 import com.example.bossapp.presentation.base.BaseFragment;
 import com.example.bossapp.presentation.friends.QRScannerActivity;
+import com.google.android.material.button.MaterialButton;
 import com.google.firebase.auth.FirebaseAuth;
 
 public class ProfileFragment extends BaseFragment {
@@ -32,13 +34,15 @@ public class ProfileFragment extends BaseFragment {
 
     private ImageView ivAvatar, ivQRCode;
     private TextView tvUsername, tvLevel, tvTitle, tvPowerPoints, tvExperiencePoints, tvCoins, tvBadges;
-    private Button btnChangePassword, btnScanQR;
+    private MaterialButton btnChangePassword, btnScanQR, btnFriendAction;
     private View statsContainer;
 
     private UserRepository userRepository;
-    private String currentUserId; // ID prijavljenog korisnika
-    private String displayUserId; // ID korisnika čiji se profil prikazuje
-    private boolean isOwnProfile; // Da li je ovo moj profil
+    private FriendRepository friendRepository;
+    private String currentUserId;
+    private String displayUserId;
+    private boolean isOwnProfile;
+    private User displayedUser;
 
     public static ProfileFragment newInstance(String userId) {
         ProfileFragment fragment = new ProfileFragment();
@@ -62,25 +66,24 @@ public class ProfileFragment extends BaseFragment {
         initViews(view);
 
         userRepository = new UserRepository();
+        friendRepository = new FriendRepository();
         currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
 
-        // Proveri čiji profil prikazujemo
         if (getArguments() != null && getArguments().containsKey(ARG_USER_ID)) {
             String argUserId = getArguments().getString(ARG_USER_ID);
-            // Ako je argument null ili prazan, prikaži moj profil
             if (argUserId != null && !argUserId.isEmpty()) {
                 displayUserId = argUserId;
             } else {
                 displayUserId = currentUserId;
             }
         } else {
-            displayUserId = currentUserId; // Ako nema argumenta, prikaži moj profil
+            displayUserId = currentUserId;
         }
 
         isOwnProfile = currentUserId.equals(displayUserId);
 
         setupButtons();
-        configureVisibility(); // Podesi šta je vidljivo
+        configureVisibility();
         loadUserProfile();
         generateAndDisplayQRCode();
     }
@@ -97,6 +100,7 @@ public class ProfileFragment extends BaseFragment {
         tvBadges = view.findViewById(R.id.tvBadges);
         btnChangePassword = view.findViewById(R.id.btnChangePassword);
         btnScanQR = view.findViewById(R.id.btnScanQR);
+        btnFriendAction = view.findViewById(R.id.btnFriendAction);
         statsContainer = view.findViewById(R.id.statsContainer);
     }
 
@@ -110,27 +114,25 @@ public class ProfileFragment extends BaseFragment {
             Intent intent = new Intent(requireActivity(), QRScannerActivity.class);
             startActivityForResult(intent, QR_SCAN_REQUEST);
         });
+
+        btnFriendAction.setOnClickListener(v -> handleFriendAction());
     }
 
     private void configureVisibility() {
         if (isOwnProfile) {
-            // Moj profil - prikaži sve
+            // My profile - show everything
             btnChangePassword.setVisibility(View.VISIBLE);
             btnScanQR.setVisibility(View.VISIBLE);
-
-            // Prikaži novčiće i PP (samo vlasnik ih vidi)
+            btnFriendAction.setVisibility(View.GONE); // Hide friend button on own profile
             tvCoins.setVisibility(View.VISIBLE);
             tvPowerPoints.setVisibility(View.VISIBLE);
         } else {
-            // Tuđi profil - sakrij privatne informacije
+            // Other user's profile
             btnChangePassword.setVisibility(View.GONE);
             btnScanQR.setVisibility(View.GONE);
-
-            // Sakrij novčiće i PP od drugih korisnika
+            btnFriendAction.setVisibility(View.VISIBLE); // Show friend button
             tvCoins.setVisibility(View.GONE);
             tvPowerPoints.setVisibility(View.GONE);
-
-            // Prikaži samo: Avatar, Username, Level, Titulu, QR, XP, Bedževe i Opremu
         }
     }
 
@@ -138,14 +140,16 @@ public class ProfileFragment extends BaseFragment {
         userRepository.getUserById(displayUserId, new UserRepository.OnUserLoadListener() {
             @Override
             public void onSuccess(User user) {
-                Log.d(TAG, "Korisnik učitan: " + user.getUsername());
+                Log.d(TAG, "User loaded: " + user.getUsername());
+                displayedUser = user;
                 displayUserProfile(user);
+                updateFriendButton();
             }
 
             @Override
             public void onError(Exception e) {
-                Log.e(TAG, "Greška pri učitavanju korisnika", e);
-                Toast.makeText(requireContext(), "Greška pri učitavanju profila", Toast.LENGTH_SHORT).show();
+                Log.e(TAG, "Error loading user", e);
+                Toast.makeText(requireContext(), "Error loading profile", Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -165,7 +169,6 @@ public class ProfileFragment extends BaseFragment {
         tvLevel.setText(String.valueOf(user.getLevel()));
         tvTitle.setText(user.getTitle());
 
-        // Prikaži PP samo ako je moj profil
         if (isOwnProfile) {
             tvPowerPoints.setText(String.valueOf(user.getPowerPoints()));
         }
@@ -173,12 +176,119 @@ public class ProfileFragment extends BaseFragment {
         int nextLevelXP = calculateXPForNextLevel(user.getLevel());
         tvExperiencePoints.setText(user.getExperiencePoints() + " / " + nextLevelXP);
 
-        // Prikaži novčiće samo ako je moj profil
         if (isOwnProfile) {
             tvCoins.setText(String.valueOf(user.getCoins()));
         }
 
         tvBadges.setText(String.valueOf(user.getBadges()));
+    }
+
+    private void updateFriendButton() {
+        if (isOwnProfile || displayedUser == null) {
+            return;
+        }
+
+        // Check if already friends
+        userRepository.getUserById(currentUserId, new UserRepository.OnUserLoadListener() {
+            @Override
+            public void onSuccess(User currentUser) {
+                if (currentUser.isFriend(displayUserId)) {
+                    // Already friends
+                    btnFriendAction.setText("Remove Friend");
+                    btnFriendAction.setIcon(getResources().getDrawable(android.R.drawable.ic_delete));
+                } else {
+                    // Not friends
+                    btnFriendAction.setText("Add Friend");
+                    btnFriendAction.setIcon(getResources().getDrawable(android.R.drawable.ic_input_add));
+                }
+            }
+
+            @Override
+            public void onError(Exception e) {
+                Log.e(TAG, "Error checking friendship status", e);
+            }
+        });
+    }
+
+    private void handleFriendAction() {
+        if (displayedUser == null) return;
+
+        userRepository.getUserById(currentUserId, new UserRepository.OnUserLoadListener() {
+            @Override
+            public void onSuccess(User currentUser) {
+                if (currentUser.isFriend(displayUserId)) {
+                    // Remove friend
+                    removeFriend();
+                } else {
+                    // Send friend request
+                    sendFriendRequest(currentUser);
+                }
+            }
+
+            @Override
+            public void onError(Exception e) {
+                Toast.makeText(requireContext(), "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void sendFriendRequest(User currentUser) {
+        btnFriendAction.setEnabled(false);
+        btnFriendAction.setText("Sending...");
+
+        friendRepository.sendFriendRequest(
+                currentUserId,
+                displayUserId,
+                currentUser.getUsername(),
+                currentUser.getAvatarIndex(),
+                new FriendRepository.OnFriendRequestListener() {
+                    @Override
+                    public void onSuccess() {
+                        Toast.makeText(requireContext(),
+                                "Friend request sent!", Toast.LENGTH_SHORT).show();
+                        btnFriendAction.setEnabled(true);
+                        btnFriendAction.setText("Request Sent");
+                        btnFriendAction.setEnabled(false);
+                    }
+
+                    @Override
+                    public void onError(Exception e) {
+                        btnFriendAction.setEnabled(true);
+                        updateFriendButton();
+                        String message = e.getMessage();
+                        if (message != null && message.contains("already exists")) {
+                            Toast.makeText(requireContext(),
+                                    "Friend request already sent", Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(requireContext(),
+                                    "Error sending request: " + message, Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
+    }
+
+    private void removeFriend() {
+        btnFriendAction.setEnabled(false);
+        btnFriendAction.setText("Removing...");
+
+        friendRepository.removeFriend(currentUserId, displayUserId,
+                new FriendRepository.OnFriendRequestListener() {
+                    @Override
+                    public void onSuccess() {
+                        Toast.makeText(requireContext(),
+                                "Friend removed", Toast.LENGTH_SHORT).show();
+                        btnFriendAction.setEnabled(true);
+                        updateFriendButton();
+                    }
+
+                    @Override
+                    public void onError(Exception e) {
+                        btnFriendAction.setEnabled(true);
+                        updateFriendButton();
+                        Toast.makeText(requireContext(),
+                                "Error removing friend: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 
     private void generateAndDisplayQRCode() {
@@ -189,11 +299,11 @@ public class ProfileFragment extends BaseFragment {
                 getActivity().runOnUiThread(() -> {
                     if (qrBitmap != null) {
                         ivQRCode.setImageBitmap(qrBitmap);
-                        Log.d(TAG, "QR kod uspešno generisan");
+                        Log.d(TAG, "QR code generated successfully");
                     } else {
-                        Log.e(TAG, "Greška pri generisanju QR koda");
+                        Log.e(TAG, "Error generating QR code");
                         Toast.makeText(requireContext(),
-                                "Greška pri generisanju QR koda",
+                                "Error generating QR code",
                                 Toast.LENGTH_SHORT).show();
                     }
                 });
@@ -220,17 +330,14 @@ public class ProfileFragment extends BaseFragment {
             String scannedUserId = data.getStringExtra(QRScannerActivity.EXTRA_USER_ID);
             if (scannedUserId != null) {
                 Toast.makeText(requireContext(),
-                        "Skenirani User ID: " + scannedUserId,
+                        "Scanned User ID: " + scannedUserId,
                         Toast.LENGTH_LONG).show();
-
-                // Učitaj profil skeniranog korisnika
                 loadScannedUserProfile(scannedUserId);
             }
         }
     }
 
     private void loadScannedUserProfile(String userId) {
-        // Zameni trenutni fragment sa profilom skeniranog korisnika
         ProfileFragment fragment = ProfileFragment.newInstance(userId);
         requireActivity().getSupportFragmentManager()
                 .beginTransaction()
