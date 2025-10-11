@@ -8,6 +8,7 @@ import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
+import com.google.firebase.firestore.WriteBatch;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,7 +23,6 @@ public class FriendRepository {
     public FriendRepository() {
         db = FirebaseFirestore.getInstance();
     }
-
 
     public interface OnFriendRequestListener {
         void onSuccess();
@@ -39,11 +39,9 @@ public class FriendRepository {
         void onError(Exception e);
     }
 
-
     public void sendFriendRequest(String senderId, String receiverId,
                                   String senderUsername, int senderAvatarIndex,
                                   OnFriendRequestListener listener) {
-        // Check if they are already friends or request already exists
         checkIfAlreadyFriendsOrRequested(senderId, receiverId, new OnFriendRequestCheckListener() {
             @Override
             public void onResult(boolean exists, String requestId) {
@@ -52,7 +50,6 @@ public class FriendRepository {
                     return;
                 }
 
-                // Create new request
                 FriendRequest request = new FriendRequest(senderId, receiverId,
                         senderUsername, senderAvatarIndex);
 
@@ -78,7 +75,6 @@ public class FriendRepository {
 
     private void checkIfAlreadyFriendsOrRequested(String user1Id, String user2Id,
                                                   OnFriendRequestCheckListener listener) {
-        // Check if they are already friends
         db.collection(COLLECTION_USERS)
                 .document(user1Id)
                 .get()
@@ -89,7 +85,6 @@ public class FriendRepository {
                         return;
                     }
 
-                    // Check for pending requests (both directions)
                     db.collection(COLLECTION_FRIEND_REQUESTS)
                             .whereEqualTo("senderId", user1Id)
                             .whereEqualTo("receiverId", user2Id)
@@ -99,7 +94,6 @@ public class FriendRepository {
                                 if (!querySnapshot.isEmpty()) {
                                     listener.onResult(true, querySnapshot.getDocuments().get(0).getId());
                                 } else {
-                                    // Check reverse direction
                                     db.collection(COLLECTION_FRIEND_REQUESTS)
                                             .whereEqualTo("senderId", user2Id)
                                             .whereEqualTo("receiverId", user1Id)
@@ -120,18 +114,26 @@ public class FriendRepository {
                 .addOnFailureListener(listener::onError);
     }
 
-
     public void acceptFriendRequest(String requestId, String senderId, String receiverId,
                                     OnFriendRequestListener listener) {
-        // Update request status
-        db.collection(COLLECTION_FRIEND_REQUESTS)
-                .document(requestId)
-                .update("status", "accepted")
-                .addOnSuccessListener(aVoid -> {
-                    // Add to both users' friend lists
-                    addFriendToUser(senderId, receiverId);
-                    addFriendToUser(receiverId, senderId);
+        // Use a batch write to ensure atomicity
+        WriteBatch batch = db.batch();
 
+        // Update request status
+        batch.update(db.collection(COLLECTION_FRIEND_REQUESTS).document(requestId),
+                "status", "accepted");
+
+        // Add to both users' friend lists
+        batch.update(db.collection(COLLECTION_USERS).document(senderId),
+                "friendIds", FieldValue.arrayUnion(receiverId));
+
+        batch.update(db.collection(COLLECTION_USERS).document(receiverId),
+                "friendIds", FieldValue.arrayUnion(senderId));
+
+        // Commit the batch
+        batch.commit()
+                .addOnSuccessListener(aVoid -> {
+                    Log.d(TAG, "Friend request accepted and friends added to both users");
                     listener.onSuccess();
                 })
                 .addOnFailureListener(e -> {
@@ -139,7 +141,6 @@ public class FriendRepository {
                     listener.onError(e);
                 });
     }
-
 
     public void rejectFriendRequest(String requestId, OnFriendRequestListener listener) {
         db.collection(COLLECTION_FRIEND_REQUESTS)
@@ -155,12 +156,10 @@ public class FriendRepository {
                 });
     }
 
-
     public void getPendingRequests(String userId, OnFriendRequestsLoadListener listener) {
         db.collection(COLLECTION_FRIEND_REQUESTS)
                 .whereEqualTo("receiverId", userId)
                 .whereEqualTo("status", "pending")
-                .orderBy("timestamp", Query.Direction.DESCENDING)
                 .get()
                 .addOnSuccessListener(querySnapshot -> {
                     List<FriendRequest> requests = new ArrayList<>();
@@ -170,6 +169,7 @@ public class FriendRepository {
                             requests.add(request);
                         }
                     }
+                    requests.sort((r1, r2) -> Long.compare(r2.getTimestamp(), r1.getTimestamp()));
                     listener.onSuccess(requests);
                 })
                 .addOnFailureListener(e -> {
@@ -178,39 +178,25 @@ public class FriendRepository {
                 });
     }
 
-
-    private void addFriendToUser(String userId, String friendId) {
-        db.collection(COLLECTION_USERS)
-                .document(userId)
-                .update("friendIds", FieldValue.arrayUnion(friendId))
-                .addOnSuccessListener(aVoid ->
-                        Log.d(TAG, "Added friend " + friendId + " to user " + userId))
-                .addOnFailureListener(e ->
-                        Log.e(TAG, "Error adding friend", e));
-    }
-
-
     public void removeFriend(String userId, String friendId, OnFriendRequestListener listener) {
-        // Remove from both users
-        db.collection(COLLECTION_USERS)
-                .document(userId)
-                .update("friendIds", FieldValue.arrayRemove(friendId))
+        WriteBatch batch = db.batch();
+
+        batch.update(db.collection(COLLECTION_USERS).document(userId),
+                "friendIds", FieldValue.arrayRemove(friendId));
+
+        batch.update(db.collection(COLLECTION_USERS).document(friendId),
+                "friendIds", FieldValue.arrayRemove(userId));
+
+        batch.commit()
                 .addOnSuccessListener(aVoid -> {
-                    db.collection(COLLECTION_USERS)
-                            .document(friendId)
-                            .update("friendIds", FieldValue.arrayRemove(userId))
-                            .addOnSuccessListener(aVoid2 -> {
-                                Log.d(TAG, "Friendship removed");
-                                listener.onSuccess();
-                            })
-                            .addOnFailureListener(listener::onError);
+                    Log.d(TAG, "Friendship removed from both users");
+                    listener.onSuccess();
                 })
                 .addOnFailureListener(e -> {
                     Log.e(TAG, "Error removing friend", e);
                     listener.onError(e);
                 });
     }
-
 
     public void getFriends(String userId, UserRepository.OnUsersLoadListener listener) {
         db.collection(COLLECTION_USERS)
@@ -223,7 +209,6 @@ public class FriendRepository {
                         return;
                     }
 
-                    // Load friend details
                     db.collection(COLLECTION_USERS)
                             .whereIn("userId", user.getFriendIds())
                             .get()
@@ -248,7 +233,6 @@ public class FriendRepository {
                 });
     }
 
-
     public void searchUsersByUsername(String query, String currentUserId,
                                       UserRepository.OnUsersLoadListener listener) {
         db.collection(COLLECTION_USERS)
@@ -272,7 +256,6 @@ public class FriendRepository {
                     listener.onError(e);
                 });
     }
-
 
     public void getAllUsers(String currentUserId, UserRepository.OnUsersLoadListener listener) {
         db.collection(COLLECTION_USERS)

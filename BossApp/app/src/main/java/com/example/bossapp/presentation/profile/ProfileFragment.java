@@ -8,13 +8,13 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 
 import com.example.bossapp.R;
 import com.example.bossapp.business.QRCodeManager;
@@ -43,6 +43,7 @@ public class ProfileFragment extends BaseFragment {
     private String displayUserId;
     private boolean isOwnProfile;
     private User displayedUser;
+    private User currentUser;
 
     public static ProfileFragment newInstance(String userId) {
         ProfileFragment fragment = new ProfileFragment();
@@ -84,8 +85,18 @@ public class ProfileFragment extends BaseFragment {
 
         setupButtons();
         configureVisibility();
+        loadCurrentUserData();
         loadUserProfile();
         generateAndDisplayQRCode();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Refresh kada se vratimo na profil
+        if (!isOwnProfile) {
+            loadCurrentUserData();
+        }
     }
 
     private void initViews(View view) {
@@ -120,20 +131,35 @@ public class ProfileFragment extends BaseFragment {
 
     private void configureVisibility() {
         if (isOwnProfile) {
-            // My profile - show everything
             btnChangePassword.setVisibility(View.VISIBLE);
             btnScanQR.setVisibility(View.VISIBLE);
-            btnFriendAction.setVisibility(View.GONE); // Hide friend button on own profile
+            btnFriendAction.setVisibility(View.GONE);
             tvCoins.setVisibility(View.VISIBLE);
             tvPowerPoints.setVisibility(View.VISIBLE);
         } else {
-            // Other user's profile
             btnChangePassword.setVisibility(View.GONE);
             btnScanQR.setVisibility(View.GONE);
-            btnFriendAction.setVisibility(View.VISIBLE); // Show friend button
+            btnFriendAction.setVisibility(View.VISIBLE);
             tvCoins.setVisibility(View.GONE);
             tvPowerPoints.setVisibility(View.GONE);
         }
+    }
+
+    private void loadCurrentUserData() {
+        userRepository.getUserById(currentUserId, new UserRepository.OnUserLoadListener() {
+            @Override
+            public void onSuccess(User user) {
+                currentUser = user;
+                if (!isOwnProfile) {
+                    updateFriendButton();
+                }
+            }
+
+            @Override
+            public void onError(Exception e) {
+                Log.e(TAG, "Error loading current user", e);
+            }
+        });
     }
 
     private void loadUserProfile() {
@@ -143,7 +169,9 @@ public class ProfileFragment extends BaseFragment {
                 Log.d(TAG, "User loaded: " + user.getUsername());
                 displayedUser = user;
                 displayUserProfile(user);
-                updateFriendButton();
+                if (!isOwnProfile) {
+                    updateFriendButton();
+                }
             }
 
             @Override
@@ -184,55 +212,41 @@ public class ProfileFragment extends BaseFragment {
     }
 
     private void updateFriendButton() {
-        if (isOwnProfile || displayedUser == null) {
+        if (isOwnProfile || displayedUser == null || currentUser == null) {
             return;
         }
 
-        // Check if already friends
-        userRepository.getUserById(currentUserId, new UserRepository.OnUserLoadListener() {
-            @Override
-            public void onSuccess(User currentUser) {
-                if (currentUser.isFriend(displayUserId)) {
-                    // Already friends
-                    btnFriendAction.setText("Remove Friend");
-                    btnFriendAction.setIcon(getResources().getDrawable(android.R.drawable.ic_delete));
-                } else {
-                    // Not friends
-                    btnFriendAction.setText("Add Friend");
-                    btnFriendAction.setIcon(getResources().getDrawable(android.R.drawable.ic_input_add));
-                }
-            }
+        boolean isFriend = currentUser.isFriend(displayUserId);
 
-            @Override
-            public void onError(Exception e) {
-                Log.e(TAG, "Error checking friendship status", e);
-            }
-        });
+        if (isFriend) {
+            btnFriendAction.setText("Remove Friend");
+            btnFriendAction.setIcon(getResources().getDrawable(android.R.drawable.ic_delete));
+        } else {
+            btnFriendAction.setText("Add Friend");
+            btnFriendAction.setIcon(getResources().getDrawable(android.R.drawable.ic_input_add));
+        }
     }
 
     private void handleFriendAction() {
-        if (displayedUser == null) return;
+        if (displayedUser == null || currentUser == null) return;
 
-        userRepository.getUserById(currentUserId, new UserRepository.OnUserLoadListener() {
-            @Override
-            public void onSuccess(User currentUser) {
-                if (currentUser.isFriend(displayUserId)) {
-                    // Remove friend
-                    removeFriend();
-                } else {
-                    // Send friend request
-                    sendFriendRequest(currentUser);
-                }
-            }
-
-            @Override
-            public void onError(Exception e) {
-                Toast.makeText(requireContext(), "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-            }
-        });
+        if (currentUser.isFriend(displayUserId)) {
+            showRemoveFriendDialog();
+        } else {
+            sendFriendRequest();
+        }
     }
 
-    private void sendFriendRequest(User currentUser) {
+    private void showRemoveFriendDialog() {
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Remove Friend")
+                .setMessage("Are you sure you want to remove " + displayedUser.getUsername() + " from your friends?")
+                .setPositiveButton("Yes", (dialog, which) -> removeFriend())
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void sendFriendRequest() {
         btnFriendAction.setEnabled(false);
         btnFriendAction.setText("Sending...");
 
@@ -246,7 +260,6 @@ public class ProfileFragment extends BaseFragment {
                     public void onSuccess() {
                         Toast.makeText(requireContext(),
                                 "Friend request sent!", Toast.LENGTH_SHORT).show();
-                        btnFriendAction.setEnabled(true);
                         btnFriendAction.setText("Request Sent");
                         btnFriendAction.setEnabled(false);
                     }
@@ -254,14 +267,16 @@ public class ProfileFragment extends BaseFragment {
                     @Override
                     public void onError(Exception e) {
                         btnFriendAction.setEnabled(true);
-                        updateFriendButton();
                         String message = e.getMessage();
                         if (message != null && message.contains("already exists")) {
                             Toast.makeText(requireContext(),
                                     "Friend request already sent", Toast.LENGTH_SHORT).show();
+                            btnFriendAction.setText("Request Sent");
+                            btnFriendAction.setEnabled(false);
                         } else {
                             Toast.makeText(requireContext(),
                                     "Error sending request: " + message, Toast.LENGTH_SHORT).show();
+                            updateFriendButton();
                         }
                     }
                 });
@@ -278,15 +293,16 @@ public class ProfileFragment extends BaseFragment {
                         Toast.makeText(requireContext(),
                                 "Friend removed", Toast.LENGTH_SHORT).show();
                         btnFriendAction.setEnabled(true);
-                        updateFriendButton();
+                        // Reload current user to update friend list
+                        loadCurrentUserData();
                     }
 
                     @Override
                     public void onError(Exception e) {
                         btnFriendAction.setEnabled(true);
-                        updateFriendButton();
                         Toast.makeText(requireContext(),
                                 "Error removing friend: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        updateFriendButton();
                     }
                 });
     }

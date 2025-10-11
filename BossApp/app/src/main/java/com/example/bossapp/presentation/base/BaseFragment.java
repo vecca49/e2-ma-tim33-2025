@@ -7,8 +7,10 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 
 import com.example.bossapp.MainActivity;
+import com.example.bossapp.R;  // ← DODAJ OVO
 import com.example.bossapp.business.AuthManager;
 import com.example.bossapp.presentation.auth.LoginActivity;
+import com.example.bossapp.presentation.notifications.NotificationsFragment;
 import com.google.android.material.appbar.MaterialToolbar;
 
 public abstract class BaseFragment extends Fragment {
@@ -21,21 +23,32 @@ public abstract class BaseFragment extends Fragment {
 
         authManager = new AuthManager(requireContext());
 
-        // Back button - poziva MainActivity.navigateBack()
         toolbar.setNavigationOnClickListener(v -> {
             if (requireActivity() instanceof MainActivity) {
                 ((MainActivity) requireActivity()).navigateBack();
             }
         });
 
-        // Logout button
         toolbar.setOnMenuItemClickListener(item -> {
-            if (item.getItemId() == com.example.bossapp.R.id.action_logout) {
+            int itemId = item.getItemId();
+
+            if (itemId == R.id.action_notifications) {
+                openNotifications();
+                return true;
+            } else if (itemId == R.id.action_logout) {
                 showLogoutConfirmationDialog();
                 return true;
             }
             return false;
         });
+    }
+
+    private void openNotifications() {
+        requireActivity().getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.fragmentContainer, new NotificationsFragment())
+                .addToBackStack(null)
+                .commit();
     }
 
     private void showLogoutConfirmationDialog() {
