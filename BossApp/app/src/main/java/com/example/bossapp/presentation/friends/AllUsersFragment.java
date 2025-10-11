@@ -1,16 +1,16 @@
-package com.example.bossapp.presentation.home;
+package com.example.bossapp.presentation.friends;
 
-import android.app.AlertDialog;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.TextView;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.appcompat.app.AlertDialog;
+import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.bossapp.R;
@@ -18,20 +18,18 @@ import com.example.bossapp.data.model.User;
 import com.example.bossapp.data.repository.FriendRepository;
 import com.example.bossapp.data.repository.UserRepository;
 import com.example.bossapp.presentation.base.BaseFragment;
-import com.example.bossapp.presentation.friends.AllUsersFragment;
-import com.example.bossapp.presentation.friends.FindFriendsAdapter;
 import com.example.bossapp.presentation.profile.ProfileFragment;
 import com.google.firebase.auth.FirebaseAuth;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class HomeFragment extends BaseFragment {
+public class AllUsersFragment extends BaseFragment {
 
-    private RecyclerView rvFindFriends;
-    private TextView tvSeeAll;
-    private FindFriendsAdapter friendsAdapter;
-    private List<User> suggestionsList = new ArrayList<>();
+    private RecyclerView rvUsers;
+    private ProgressBar progressBar;
+    private FindFriendsAdapter adapter;
+    private List<User> usersList = new ArrayList<>();
 
     private UserRepository userRepository;
     private FriendRepository friendRepository;
@@ -42,7 +40,7 @@ public class HomeFragment extends BaseFragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_home, container, false);
+        return inflater.inflate(R.layout.fragment_all_users, container, false);
     }
 
     @Override
@@ -56,40 +54,35 @@ public class HomeFragment extends BaseFragment {
         friendRepository = new FriendRepository();
         currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
 
-        setupFindFriendsWidget();
+        setupRecyclerView();
         loadCurrentUser();
     }
 
     private void initViews(View view) {
-        rvFindFriends = view.findViewById(R.id.rvFindFriends);
-        tvSeeAll = view.findViewById(R.id.tvSeeAll);
+        rvUsers = view.findViewById(R.id.rvUsers);
+        progressBar = view.findViewById(R.id.progressBar);
     }
 
-    private void setupFindFriendsWidget() {
-        friendsAdapter = new FindFriendsAdapter(suggestionsList, null,
-                new FindFriendsAdapter.OnUserActionListener() {
-                    @Override
-                    public void onAddFriend(User user) {
-                        handleAddFriend(user);
-                    }
+    private void setupRecyclerView() {
+        adapter = new FindFriendsAdapter(usersList, null, new FindFriendsAdapter.OnUserActionListener() {
+            @Override
+            public void onAddFriend(User user) {
+                handleAddFriend(user);
+            }
 
-                    @Override
-                    public void onRemoveFriend(User user) {
-                        handleRemoveFriend(user);
-                    }
+            @Override
+            public void onRemoveFriend(User user) {
+                showRemoveFriendDialog(user);
+            }
 
-                    @Override
-                    public void onViewProfile(User user) {
-                        openUserProfile(user.getUserId());
-                    }
-                });
+            @Override
+            public void onViewProfile(User user) {
+                openUserProfile(user.getUserId());
+            }
+        });
 
-        LinearLayoutManager layoutManager = new LinearLayoutManager(
-                requireContext(), LinearLayoutManager.HORIZONTAL, false);
-        rvFindFriends.setLayoutManager(layoutManager);
-        rvFindFriends.setAdapter(friendsAdapter);
-
-        tvSeeAll.setOnClickListener(v -> openAllUsersScreen());
+        rvUsers.setLayoutManager(new GridLayoutManager(requireContext(), 2));
+        rvUsers.setAdapter(adapter);
     }
 
     private void loadCurrentUser() {
@@ -97,31 +90,35 @@ public class HomeFragment extends BaseFragment {
             @Override
             public void onSuccess(User user) {
                 currentUser = user;
-                friendsAdapter.updateCurrentUser(user);
-                loadUserSuggestions();
+                adapter.updateCurrentUser(user);
+                loadAllUsers();
             }
 
             @Override
             public void onError(Exception e) {
-                loadUserSuggestions();
+                Toast.makeText(requireContext(), "Error loading user data", Toast.LENGTH_SHORT).show();
+                loadAllUsers();
             }
         });
     }
 
-    private void loadUserSuggestions() {
+    private void loadAllUsers() {
+        progressBar.setVisibility(View.VISIBLE);
+
         friendRepository.getAllUsers(currentUserId, new UserRepository.OnUsersLoadListener() {
             @Override
             public void onSuccess(List<User> users) {
-                suggestionsList.clear();
-                int limit = Math.min(users.size(), 10);
-                suggestionsList.addAll(users.subList(0, limit));
-                friendsAdapter.notifyDataSetChanged();
+                progressBar.setVisibility(View.GONE);
+                usersList.clear();
+                usersList.addAll(users);
+                adapter.notifyDataSetChanged();
             }
 
             @Override
             public void onError(Exception e) {
+                progressBar.setVisibility(View.GONE);
                 Toast.makeText(requireContext(),
-                        "Error loading suggestions",
+                        "Error loading users: " + e.getMessage(),
                         Toast.LENGTH_SHORT).show();
             }
         });
@@ -139,7 +136,7 @@ public class HomeFragment extends BaseFragment {
                     @Override
                     public void onSuccess() {
                         Toast.makeText(requireContext(),
-                                "Friend request sent!",
+                                "Friend request sent to " + user.getUsername(),
                                 Toast.LENGTH_SHORT).show();
                     }
 
@@ -148,7 +145,7 @@ public class HomeFragment extends BaseFragment {
                         String message = e.getMessage();
                         if (message != null && message.contains("already exists")) {
                             Toast.makeText(requireContext(),
-                                    "Request already sent",
+                                    "Request already sent or you're already friends",
                                     Toast.LENGTH_SHORT).show();
                         } else {
                             Toast.makeText(requireContext(),
@@ -159,31 +156,33 @@ public class HomeFragment extends BaseFragment {
                 });
     }
 
-    private void handleRemoveFriend(User user) {
+    private void showRemoveFriendDialog(User user) {
         new AlertDialog.Builder(requireContext())
                 .setTitle("Remove Friend")
                 .setMessage("Are you sure you want to remove " + user.getUsername() + " from your friends?")
-                .setPositiveButton("Yes", (dialog, which) -> {
-                    friendRepository.removeFriend(currentUserId, user.getUserId(),
-                            new FriendRepository.OnFriendRequestListener() {
-                                @Override
-                                public void onSuccess() {
-                                    Toast.makeText(requireContext(),
-                                            "Friend removed",
-                                            Toast.LENGTH_SHORT).show();
-                                    loadCurrentUser();
-                                }
-
-                                @Override
-                                public void onError(Exception e) {
-                                    Toast.makeText(requireContext(),
-                                            "Error: " + e.getMessage(),
-                                            Toast.LENGTH_SHORT).show();
-                                }
-                            });
-                })
+                .setPositiveButton("Yes", (dialog, which) -> handleRemoveFriend(user))
                 .setNegativeButton("Cancel", null)
                 .show();
+    }
+
+    private void handleRemoveFriend(User user) {
+        friendRepository.removeFriend(currentUserId, user.getUserId(),
+                new FriendRepository.OnFriendRequestListener() {
+                    @Override
+                    public void onSuccess() {
+                        Toast.makeText(requireContext(),
+                                user.getUsername() + " removed from friends",
+                                Toast.LENGTH_SHORT).show();
+                        loadCurrentUser();
+                    }
+
+                    @Override
+                    public void onError(Exception e) {
+                        Toast.makeText(requireContext(),
+                                "Error: " + e.getMessage(),
+                                Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 
     private void openUserProfile(String userId) {
@@ -191,14 +190,6 @@ public class HomeFragment extends BaseFragment {
         requireActivity().getSupportFragmentManager()
                 .beginTransaction()
                 .replace(R.id.fragmentContainer, fragment)
-                .addToBackStack(null)
-                .commit();
-    }
-
-    private void openAllUsersScreen() {
-        requireActivity().getSupportFragmentManager()
-                .beginTransaction()
-                .replace(R.id.fragmentContainer, new AllUsersFragment())
                 .addToBackStack(null)
                 .commit();
     }
