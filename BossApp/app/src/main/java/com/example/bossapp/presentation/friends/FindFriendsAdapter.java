@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.bossapp.R;
 import com.example.bossapp.data.model.User;
 import com.google.android.material.button.MaterialButton;
+import com.google.firebase.auth.FirebaseAuth;
 
 import java.util.List;
 
@@ -20,6 +21,7 @@ public class FindFriendsAdapter extends RecyclerView.Adapter<FindFriendsAdapter.
     private List<User> users;
     private User currentUser;
     private OnUserActionListener listener;
+    private boolean showActionButtons;
 
     public interface OnUserActionListener {
         void onAddFriend(User user);
@@ -28,13 +30,23 @@ public class FindFriendsAdapter extends RecyclerView.Adapter<FindFriendsAdapter.
     }
 
     public FindFriendsAdapter(List<User> users, User currentUser, OnUserActionListener listener) {
+        this(users, currentUser, listener, true);
+    }
+
+    public FindFriendsAdapter(List<User> users, User currentUser, OnUserActionListener listener, boolean showActionButtons) {
         this.users = users;
         this.currentUser = currentUser;
         this.listener = listener;
+        this.showActionButtons = showActionButtons;
     }
 
     public void updateCurrentUser(User user) {
         this.currentUser = user;
+        notifyDataSetChanged();
+    }
+
+    public void setShowActionButtons(boolean show) {
+        this.showActionButtons = show;
         notifyDataSetChanged();
     }
 
@@ -49,6 +61,7 @@ public class FindFriendsAdapter extends RecyclerView.Adapter<FindFriendsAdapter.
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         User user = users.get(position);
+        String currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
 
         int[] avatarResources = {
                 R.drawable.avatar,
@@ -62,31 +75,41 @@ public class FindFriendsAdapter extends RecyclerView.Adapter<FindFriendsAdapter.
         holder.tvUsername.setText(user.getUsername());
         holder.tvLevel.setText("Lvl " + user.getLevel());
 
-        // Check if already friends
-        boolean isFriend = currentUser != null && currentUser.isFriend(user.getUserId());
+        // Check if this is the current user viewing their own card
+        boolean isCurrentUser = user.getUserId().equals(currentUserId);
 
-        if (isFriend) {
-            // Already friends - show Remove button
-            holder.btnFriendAction.setText("Remove");
-            holder.btnFriendAction.setIcon(holder.itemView.getContext().getDrawable(android.R.drawable.ic_delete));
-            holder.btnFriendAction.setIconGravity(MaterialButton.ICON_GRAVITY_TEXT_START);
-            holder.btnFriendAction.setContentDescription("Remove " + user.getUsername() + " from friends");
-            holder.btnFriendAction.setOnClickListener(v -> {
-                if (listener != null) {
-                    listener.onRemoveFriend(user);
-                }
-            });
+        if (isCurrentUser || !showActionButtons) {
+            // Hide button for current user or if buttons are disabled
+            holder.btnFriendAction.setVisibility(View.GONE);
         } else {
-            // Not friends - show Add button
-            holder.btnFriendAction.setText("Add");
-            holder.btnFriendAction.setIcon(holder.itemView.getContext().getDrawable(android.R.drawable.ic_input_add));
-            holder.btnFriendAction.setIconGravity(MaterialButton.ICON_GRAVITY_TEXT_START);
-            holder.btnFriendAction.setContentDescription("Add " + user.getUsername() + " as friend");
-            holder.btnFriendAction.setOnClickListener(v -> {
-                if (listener != null) {
-                    listener.onAddFriend(user);
-                }
-            });
+            holder.btnFriendAction.setVisibility(View.VISIBLE);
+
+            // Check if already friends
+            boolean isFriend = currentUser != null && currentUser.isFriend(user.getUserId());
+
+            if (isFriend) {
+                // Already friends - show Remove button
+                holder.btnFriendAction.setText("Remove");
+                holder.btnFriendAction.setIcon(holder.itemView.getContext().getDrawable(android.R.drawable.ic_delete));
+                holder.btnFriendAction.setIconGravity(MaterialButton.ICON_GRAVITY_TEXT_START);
+                holder.btnFriendAction.setContentDescription("Remove " + user.getUsername() + " from friends");
+                holder.btnFriendAction.setOnClickListener(v -> {
+                    if (listener != null) {
+                        listener.onRemoveFriend(user);
+                    }
+                });
+            } else {
+                // Not friends - show Add button
+                holder.btnFriendAction.setText("Add");
+                holder.btnFriendAction.setIcon(holder.itemView.getContext().getDrawable(android.R.drawable.ic_input_add));
+                holder.btnFriendAction.setIconGravity(MaterialButton.ICON_GRAVITY_TEXT_START);
+                holder.btnFriendAction.setContentDescription("Add " + user.getUsername() + " as friend");
+                holder.btnFriendAction.setOnClickListener(v -> {
+                    if (listener != null) {
+                        listener.onAddFriend(user);
+                    }
+                });
+            }
         }
 
         // Click on card to view profile

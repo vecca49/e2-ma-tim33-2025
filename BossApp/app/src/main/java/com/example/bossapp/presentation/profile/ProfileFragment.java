@@ -15,6 +15,8 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.bossapp.R;
 import com.example.bossapp.business.QRCodeManager;
@@ -22,9 +24,13 @@ import com.example.bossapp.data.model.User;
 import com.example.bossapp.data.repository.FriendRepository;
 import com.example.bossapp.data.repository.UserRepository;
 import com.example.bossapp.presentation.base.BaseFragment;
+import com.example.bossapp.presentation.friends.FindFriendsAdapter;
 import com.example.bossapp.presentation.friends.QRScannerActivity;
 import com.google.android.material.button.MaterialButton;
 import com.google.firebase.auth.FirebaseAuth;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class ProfileFragment extends BaseFragment {
 
@@ -34,8 +40,13 @@ public class ProfileFragment extends BaseFragment {
 
     private ImageView ivAvatar, ivQRCode;
     private TextView tvUsername, tvLevel, tvTitle, tvPowerPoints, tvExperiencePoints, tvCoins, tvBadges;
+    private TextView tvFriendsCount, tvSeeAllFriends, tvNoFriends;
     private MaterialButton btnChangePassword, btnScanQR, btnFriendAction;
     private View statsContainer;
+    private RecyclerView rvFriends;
+
+    private FindFriendsAdapter friendsAdapter;
+    private List<User> friendsList = new ArrayList<>();
 
     private UserRepository userRepository;
     private FriendRepository friendRepository;
@@ -84,19 +95,21 @@ public class ProfileFragment extends BaseFragment {
         isOwnProfile = currentUserId.equals(displayUserId);
 
         setupButtons();
+        setupFriendsWidget();
         configureVisibility();
         loadCurrentUserData();
         loadUserProfile();
+        loadFriends();
         generateAndDisplayQRCode();
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        // Refresh kada se vratimo na profil
         if (!isOwnProfile) {
             loadCurrentUserData();
         }
+        loadFriends();
     }
 
     private void initViews(View view) {
@@ -113,6 +126,10 @@ public class ProfileFragment extends BaseFragment {
         btnScanQR = view.findViewById(R.id.btnScanQR);
         btnFriendAction = view.findViewById(R.id.btnFriendAction);
         statsContainer = view.findViewById(R.id.statsContainer);
+        rvFriends = view.findViewById(R.id.rvFriends);
+        tvFriendsCount = view.findViewById(R.id.tvFriendsCount);
+        tvSeeAllFriends = view.findViewById(R.id.tvSeeAllFriends);
+        tvNoFriends = view.findViewById(R.id.tvNoFriends);
     }
 
     private void setupButtons() {
@@ -127,6 +144,90 @@ public class ProfileFragment extends BaseFragment {
         });
 
         btnFriendAction.setOnClickListener(v -> handleFriendAction());
+
+        tvSeeAllFriends.setOnClickListener(v -> openAllFriendsScreen());
+    }
+
+    private void setupFriendsWidget() {
+        friendsAdapter = new FindFriendsAdapter(friendsList, null,
+                new FindFriendsAdapter.OnUserActionListener() {
+                    @Override
+                    public void onAddFriend(User user) {
+                        handleAddFriendFromWidget(user);
+                    }
+
+                    @Override
+                    public void onRemoveFriend(User user) {
+                        handleRemoveFriendFromWidget(user);
+                    }
+
+                    @Override
+                    public void onViewProfile(User user) {
+                        openUserProfile(user.getUserId());
+                    }
+                }, isOwnProfile); // Show buttons only on own profile
+
+        LinearLayoutManager layoutManager = new LinearLayoutManager(
+                requireContext(), LinearLayoutManager.HORIZONTAL, false);
+        rvFriends.setLayoutManager(layoutManager);
+        rvFriends.setAdapter(friendsAdapter);
+    }
+
+    private void handleAddFriendFromWidget(User user) {
+        if (currentUser == null) return;
+
+        friendRepository.sendFriendRequest(
+                currentUserId,
+                user.getUserId(),
+                currentUser.getUsername(),
+                currentUser.getAvatarIndex(),
+                new FriendRepository.OnFriendRequestListener() {
+                    @Override
+                    public void onSuccess() {
+                        Toast.makeText(requireContext(),
+                                "Friend request sent!", Toast.LENGTH_SHORT).show();
+                    }
+
+                    @Override
+                    public void onError(Exception e) {
+                        String message = e.getMessage();
+                        if (message != null && message.contains("already exists")) {
+                            Toast.makeText(requireContext(),
+                                    "Request already sent", Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(requireContext(),
+                                    "Error: " + message, Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
+    }
+
+    private void handleRemoveFriendFromWidget(User user) {
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Remove Friend")
+                .setMessage("Are you sure you want to remove " + user.getUsername() + " from your friends?")
+                .setPositiveButton("Yes", (dialog, which) -> {
+                    friendRepository.removeFriend(currentUserId, user.getUserId(),
+                            new FriendRepository.OnFriendRequestListener() {
+                                @Override
+                                public void onSuccess() {
+                                    Toast.makeText(requireContext(),
+                                            user.getUsername() + " removed from friends",
+                                            Toast.LENGTH_SHORT).show();
+                                    loadCurrentUserData();
+                                    loadFriends();
+                                }
+
+                                @Override
+                                public void onError(Exception e) {
+                                    Toast.makeText(requireContext(),
+                                            "Error: " + e.getMessage(),
+                                            Toast.LENGTH_SHORT).show();
+                                }
+                            });
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     private void configureVisibility() {
@@ -150,6 +251,7 @@ public class ProfileFragment extends BaseFragment {
             @Override
             public void onSuccess(User user) {
                 currentUser = user;
+                friendsAdapter.updateCurrentUser(user);
                 if (!isOwnProfile) {
                     updateFriendButton();
                 }
@@ -178,6 +280,35 @@ public class ProfileFragment extends BaseFragment {
             public void onError(Exception e) {
                 Log.e(TAG, "Error loading user", e);
                 Toast.makeText(requireContext(), "Error loading profile", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void loadFriends() {
+        friendRepository.getFriends(displayUserId, new UserRepository.OnUsersLoadListener() {
+            @Override
+            public void onSuccess(List<User> friends) {
+                friendsList.clear();
+                friendsList.addAll(friends);
+                friendsAdapter.notifyDataSetChanged();
+
+                tvFriendsCount.setText(String.valueOf(friends.size()));
+
+                if (friends.isEmpty()) {
+                    rvFriends.setVisibility(View.GONE);
+                    tvNoFriends.setVisibility(View.VISIBLE);
+                } else {
+                    rvFriends.setVisibility(View.VISIBLE);
+                    tvNoFriends.setVisibility(View.GONE);
+                }
+            }
+
+            @Override
+            public void onError(Exception e) {
+                Log.e(TAG, "Error loading friends", e);
+                tvFriendsCount.setText("0");
+                rvFriends.setVisibility(View.GONE);
+                tvNoFriends.setVisibility(View.VISIBLE);
             }
         });
     }
@@ -293,8 +424,8 @@ public class ProfileFragment extends BaseFragment {
                         Toast.makeText(requireContext(),
                                 "Friend removed", Toast.LENGTH_SHORT).show();
                         btnFriendAction.setEnabled(true);
-                        // Reload current user to update friend list
                         loadCurrentUserData();
+                        loadFriends();
                     }
 
                     @Override
@@ -305,6 +436,32 @@ public class ProfileFragment extends BaseFragment {
                         updateFriendButton();
                     }
                 });
+    }
+
+    private void openUserProfile(String userId) {
+        if (userId.equals(currentUserId)) {
+            // If clicking on own profile in friends list, just reload
+            if (!isOwnProfile) {
+                ProfileFragment fragment = ProfileFragment.newInstance(userId);
+                requireActivity().getSupportFragmentManager()
+                        .beginTransaction()
+                        .replace(R.id.fragmentContainer, fragment)
+                        .addToBackStack(null)
+                        .commit();
+            }
+        } else {
+            ProfileFragment fragment = ProfileFragment.newInstance(userId);
+            requireActivity().getSupportFragmentManager()
+                    .beginTransaction()
+                    .replace(R.id.fragmentContainer, fragment)
+                    .addToBackStack(null)
+                    .commit();
+        }
+    }
+
+    private void openAllFriendsScreen() {
+        // TODO: Create AllFriendsFragment if you want a dedicated friends list page
+        Toast.makeText(requireContext(), "All friends view - Coming soon!", Toast.LENGTH_SHORT).show();
     }
 
     private void generateAndDisplayQRCode() {

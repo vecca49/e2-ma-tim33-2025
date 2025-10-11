@@ -78,7 +78,7 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"/>
 
-            <!-- Friend Action Button (Add/Remove Friend) - Only visible on other users' profiles -->
+            <!-- Friend Action Button (Add/Remove Friend) -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnFriendAction"
                 android:layout_width="0dp"
@@ -148,7 +148,7 @@
 
                     </LinearLayout>
 
-                    <!-- Power Points (Only own profile) -->
+                    <!-- Power Points -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -174,7 +174,7 @@
 
                     </LinearLayout>
 
-                    <!-- Experience Points (Visible to all) -->
+                    <!-- Experience Points -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -200,7 +200,7 @@
 
                     </LinearLayout>
 
-                    <!-- Coins (Only own profile) -->
+                    <!-- Coins -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -226,7 +226,7 @@
 
                     </LinearLayout>
 
-                    <!-- Badges (Visible to all) -->
+                    <!-- Badges -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -255,7 +255,98 @@
 
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Change Password Button (Only for own profile) -->
+            <!-- Friends Widget -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardFriends"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="2dp"
+                app:cardBackgroundColor="@color/surface"
+                app:layout_constraintTop_toBottomOf="@id/statsContainer"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <!-- Header -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Friends"
+                            android:textSize="18sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/text_primary"/>
+
+                        <TextView
+                            android:id="@+id/tvFriendsCount"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="0"
+                            android:textSize="14sp"
+                            android:textColor="@color/text_secondary"
+                            android:background="@drawable/badge_background"
+                            android:paddingStart="12dp"
+                            android:paddingEnd="12dp"
+                            android:paddingTop="4dp"
+                            android:paddingBottom="4dp"
+                            android:layout_marginEnd="8dp"/>
+
+                        <TextView
+                            android:id="@+id/tvSeeAllFriends"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="See All"
+                            android:textSize="14sp"
+                            android:textColor="@color/primary"
+                            android:textStyle="bold"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:background="?attr/selectableItemBackground"
+                            android:padding="8dp"/>
+
+                    </LinearLayout>
+
+                    <!-- Horizontal RecyclerView -->
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/rvFriends"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:orientation="horizontal"
+                        android:clipToPadding="false"
+                        android:paddingStart="4dp"
+                        android:paddingEnd="4dp"/>
+
+                    <!-- Empty State -->
+                    <TextView
+                        android:id="@+id/tvNoFriends"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="No friends yet"
+                        android:textSize="14sp"
+                        android:textColor="@color/text_secondary"
+                        android:layout_marginTop="12dp"
+                        android:visibility="gone"
+                        android:layout_gravity="center"/>
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Change Password Button -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnChangePassword"
                 android:layout_width="0dp"
@@ -271,11 +362,11 @@
                 app:strokeWidth="2dp"
                 app:cornerRadius="8dp"
                 style="@style/Widget.Material3.Button.OutlinedButton"
-                app:layout_constraintTop_toBottomOf="@id/statsContainer"
+                app:layout_constraintTop_toBottomOf="@id/cardFriends"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"/>
 
-            <!-- Scan QR Button (Only for own profile) -->
+            <!-- Scan QR Button -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnScanQR"
                 android:layout_width="0dp"
@@ -295,7 +386,7 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"/>
 
-            <!-- QR Code Card (Visible to all) -->
+            <!-- QR Code Card -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/cardQR"
                 android:layout_width="0dp"

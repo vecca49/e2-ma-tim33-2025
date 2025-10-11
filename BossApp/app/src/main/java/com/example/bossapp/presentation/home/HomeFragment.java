@@ -1,5 +1,6 @@
 package com.example.bossapp.presentation.home;
 
+import android.app.AlertDialog;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -159,23 +160,30 @@ public class HomeFragment extends BaseFragment {
     }
 
     private void handleRemoveFriend(User user) {
-        friendRepository.removeFriend(currentUserId, user.getUserId(),
-                new FriendRepository.OnFriendRequestListener() {
-                    @Override
-                    public void onSuccess() {
-                        Toast.makeText(requireContext(),
-                                "Friend removed",
-                                Toast.LENGTH_SHORT).show();
-                        loadCurrentUser();
-                    }
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Remove Friend")
+                .setMessage("Are you sure you want to remove " + user.getUsername() + " from your friends?")
+                .setPositiveButton("Yes", (dialog, which) -> {
+                    friendRepository.removeFriend(currentUserId, user.getUserId(),
+                            new FriendRepository.OnFriendRequestListener() {
+                                @Override
+                                public void onSuccess() {
+                                    Toast.makeText(requireContext(),
+                                            "Friend removed",
+                                            Toast.LENGTH_SHORT).show();
+                                    loadCurrentUser();
+                                }
 
-                    @Override
-                    public void onError(Exception e) {
-                        Toast.makeText(requireContext(),
-                                "Error: " + e.getMessage(),
-                                Toast.LENGTH_SHORT).show();
-                    }
-                });
+                                @Override
+                                public void onError(Exception e) {
+                                    Toast.makeText(requireContext(),
+                                            "Error: " + e.getMessage(),
+                                            Toast.LENGTH_SHORT).show();
+                                }
+                            });
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     private void openUserProfile(String userId) {
