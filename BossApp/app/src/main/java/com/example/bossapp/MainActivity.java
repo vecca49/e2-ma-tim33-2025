@@ -13,6 +13,7 @@ import com.example.bossapp.presentation.profile.ProfileFragment;
 import com.example.bossapp.presentation.statistics.StatisticsFragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.navigation.NavigationBarView;
+import com.example.bossapp.presentation.category.CreateCategoryFragment;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -61,6 +62,11 @@ public class MainActivity extends AppCompatActivity {
                     selectedFragment = new StatisticsFragment();
                     tag = "STATISTICS";
                 }
+                else if (itemId == R.id.nav_categories) {
+                    selectedFragment = new CreateCategoryFragment();
+                    tag = "CATEGORIES";
+                }
+
 
                 if (selectedFragment != null) {
                     loadFragment(selectedFragment, tag);

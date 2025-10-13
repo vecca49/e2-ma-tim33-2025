@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <EditText
+        android:id="@+id/et_category_name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Naziv kategorije"
+        android:inputType="textPersonName"
+        android:padding="8dp" />
+
+    <View
+        android:id="@+id/view_color_preview"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:layout_marginTop="16dp"
+        android:background="#FF0000" />
+
+    <Button
+        android:id="@+id/btn_pick_color"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Izaberi boju"
+        android:layout_marginTop="12dp" />
+
+</LinearLayout>
