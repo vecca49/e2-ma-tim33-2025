@@ -1,13 +1,15 @@
 package com.example.bossapp.data.model;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class User {
     private String userId;
     private String email;
     private String username;
-    private int avatarIndex; // 0-4 za 5 predefinisanih avatara
+    private int avatarIndex; // 0-4 for 5 predefined avatars
     private int level;
     private String title;
     private int xp;
@@ -15,9 +17,11 @@ public class User {
     private int coins;
     private long createdAt;
     private boolean emailVerified;
+    private List<String> friendIds;
+    private String currentAllianceId;
 
     public User() {
-
+        this.friendIds = new ArrayList<>();
     }
 
     public User(String userId, String email, String username, int avatarIndex) {
@@ -26,15 +30,17 @@ public class User {
         this.username = username;
         this.avatarIndex = avatarIndex;
         this.level = 0;
-        this.title = "Rookie"; // Početna titula
+        this.title = "Rookie"; // title at the beginning
         this.xp = 0;
         this.pp = 0;
         this.coins = 0;
         this.createdAt = System.currentTimeMillis();
         this.emailVerified = false;
+        this.friendIds = new ArrayList<>();
+        this.currentAllianceId = null;
     }
 
-    // Konverzija u Map za Firebase
+    // Convert to Map for Firebase
     public Map<String, Object> toMap() {
         Map<String, Object> map = new HashMap<>();
         map.put("userId", userId);
@@ -48,6 +54,8 @@ public class User {
         map.put("coins", coins);
         map.put("createdAt", createdAt);
         map.put("emailVerified", emailVerified);
+        map.put("friendIds", friendIds != null ? friendIds : new ArrayList<>());
+        map.put("currentAlianceId", currentAllianceId);
         return map;
     }
 
@@ -107,5 +115,21 @@ public class User {
 
     public void setBadges(int badges) {
         // TODO: Implement badges later
+    }
+
+    public List<String> getFriendIds() {
+        return friendIds != null ? friendIds : new ArrayList<>();
+    }
+    public void setFriendIds(List<String> friendIds) {
+        this.friendIds = friendIds;
+    }
+
+    public String getCurrentAllianceId() { return currentAllianceId; }
+    public void setCurrentAllianceId(String currentAllianceId) {
+        this.currentAllianceId = currentAllianceId;
+    }
+
+    public boolean isFriend(String userId) {
+        return friendIds != null && friendIds.contains(userId);
     }
 }

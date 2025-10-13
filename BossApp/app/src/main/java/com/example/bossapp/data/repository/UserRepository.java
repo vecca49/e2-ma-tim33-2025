@@ -4,6 +4,8 @@ import android.util.Log;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.example.bossapp.data.model.User;
 
+import java.util.List;
+
 public class UserRepository {
     private static final String TAG = "UserRepository";
     private static final String COLLECTION_USERS = "users";
@@ -20,6 +22,11 @@ public class UserRepository {
 
     public interface OnUserSaveListener {
         void onSuccess();
+        void onError(Exception e);
+    }
+
+    public interface OnUsersLoadListener {
+        void onSuccess(List<User> users);
         void onError(Exception e);
     }
 

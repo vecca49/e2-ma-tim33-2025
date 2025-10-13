@@ -55,6 +55,7 @@ public class MainActivity extends AppCompatActivity {
                     selectedFragment = new HomeFragment();
                     tag = "HOME";
                 } else if (itemId == R.id.nav_profile) {
+                    // Ne šaljemo userId argument - prikazujemo MOJ profil
                     selectedFragment = new ProfileFragment();
                     tag = "PROFILE";
                 } else if (itemId == R.id.nav_statistics) {
@@ -112,7 +113,6 @@ public class MainActivity extends AppCompatActivity {
         super.onSaveInstanceState(outState);
         outState.putString("currentFragment", currentFragmentTag);
         outState.putStringArrayList("navigationStack", new ArrayList<>(navigationStack));
-
     }
 
     @Override
