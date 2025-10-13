@@ -11,6 +11,7 @@ import androidx.fragment.app.Fragment;
 import com.example.bossapp.presentation.home.HomeFragment;
 import com.example.bossapp.presentation.profile.ProfileFragment;
 import com.example.bossapp.presentation.statistics.StatisticsFragment;
+import com.example.bossapp.presentation.task.TaskFragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.navigation.NavigationBarView;
 import com.example.bossapp.presentation.category.CreateCategoryFragment;
@@ -66,6 +67,11 @@ public class MainActivity extends AppCompatActivity {
                     selectedFragment = new CreateCategoryFragment();
                     tag = "CATEGORIES";
                 }
+                else if (itemId == R.id.nav_tasks) {
+                    selectedFragment = new TaskFragment(); // <-- tvoj fragment za zadatke
+                    tag = "TASKS";
+                }
+
 
 
                 if (selectedFragment != null) {
@@ -102,7 +108,10 @@ public class MainActivity extends AppCompatActivity {
                 bottomNavigationView.setSelectedItemId(R.id.nav_profile);
             } else if (previousTag.equals("STATISTICS")) {
                 bottomNavigationView.setSelectedItemId(R.id.nav_statistics);
+            } else if (previousTag.equals("TASKS")) {
+                bottomNavigationView.setSelectedItemId(R.id.nav_tasks);
             }
+
         } else {
             finish();
         }

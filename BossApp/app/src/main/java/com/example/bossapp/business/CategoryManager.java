@@ -4,6 +4,7 @@ import com.example.bossapp.data.model.Category;
 import com.example.bossapp.data.repository.CategoryRepository;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public class CategoryManager {
@@ -13,6 +14,16 @@ public class CategoryManager {
 
     public CategoryManager() {
         this.repository = new CategoryRepository();
+    }
+
+    public interface OnCategoryActionListener {
+        void onSuccess();
+        void onError(Exception e);
+    }
+
+    public interface OnCategoriesLoadListener {
+        void onSuccess(List<Category> categories);
+        void onError(Exception e);
     }
 
     public void addCategory(Category category, CategoryRepository.OnCategoryActionListener listener) {
@@ -44,6 +55,21 @@ public class CategoryManager {
             }
         });
     }
+
+    public void loadUserCategories(String userId, OnCategoriesLoadListener listener) {
+        repository.getCategoriesForUser(userId, new CategoryRepository.OnGetCategoriesListener() {
+            @Override
+            public void onSuccess(List<Category> categories) {
+                listener.onSuccess(categories);
+            }
+
+            @Override
+            public void onError(Exception e) {
+                listener.onError(e);
+            }
+        });
+    }
+
 
 
 }
