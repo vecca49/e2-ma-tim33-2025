@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="8dp"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="2dp"
+    app:cardBackgroundColor="@color/surface">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="12dp">
+
+        <androidx.cardview.widget.CardView
+            android:id="@+id/cvAvatar"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            app:cardCornerRadius="25dp"
+            app:cardElevation="2dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent">
+
+            <ImageView
+                android:id="@+id/ivAvatar"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:padding="4dp"
+                android:contentDescription="User avatar"/>
+
+        </androidx.cardview.widget.CardView>
+
+        <TextView
+            android:id="@+id/tvUsername"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="Username"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_primary"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="8dp"
+            app:layout_constraintStart_toEndOf="@id/cvAvatar"
+            app:layout_constraintEnd_toStartOf="@id/btnInvite"
+            app:layout_constraintTop_toTopOf="@id/cvAvatar"/>
+
+        <TextView
+            android:id="@+id/tvLevel"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="Level 5"
+            android:textSize="12sp"
+            android:textColor="@color/text_secondary"
+            android:layout_marginTop="2dp"
+            app:layout_constraintStart_toStartOf="@id/tvUsername"
+            app:layout_constraintEnd_toEndOf="@id/tvUsername"
+            app:layout_constraintTop_toBottomOf="@id/tvUsername"
+            app:layout_constraintBottom_toBottomOf="@id/cvAvatar"/>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnInvite"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:text="Invite"
+            android:textSize="12sp"
+            android:minWidth="88dp"
+            app:cornerRadius="8dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"/>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</com.google.android.material.card.MaterialCardView>

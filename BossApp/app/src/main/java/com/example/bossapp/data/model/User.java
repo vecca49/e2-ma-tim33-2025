@@ -55,7 +55,7 @@ public class User {
         map.put("createdAt", createdAt);
         map.put("emailVerified", emailVerified);
         map.put("friendIds", friendIds != null ? friendIds : new ArrayList<>());
-        map.put("currentAlianceId", currentAllianceId);
+        map.put("currentAllianceId", currentAllianceId); // FIXED: was "currentAlianceId"
         return map;
     }
 
