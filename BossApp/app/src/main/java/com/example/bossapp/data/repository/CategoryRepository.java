@@ -3,6 +3,9 @@ package com.example.bossapp.data.repository;
 import com.example.bossapp.data.model.Category;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class CategoryRepository {
 
     private final FirebaseFirestore db = FirebaseFirestore.getInstance();
@@ -30,5 +33,27 @@ public class CategoryRepository {
                 .addOnSuccessListener(aVoid -> listener.onSuccess())
                 .addOnFailureListener(listener::onError);
     }
+
+    public interface OnCategoriesLoadListener {
+        void onSuccess(List<Category> categories);
+        void onError(Exception e);
+    }
+
+    public interface OnGetCategoriesListener {
+        void onSuccess(List<Category> categories);
+        void onError(Exception e);
+    }
+
+    public void getCategoriesForUser(String userId, OnGetCategoriesListener listener) {
+        db.collection(COLLECTION_NAME)
+                .whereEqualTo("ownerId", userId)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    List<Category> list = queryDocumentSnapshots.toObjects(Category.class);
+                    listener.onSuccess(list);
+                })
+                .addOnFailureListener(listener::onError);
+    }
+
 
 }

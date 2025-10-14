@@ -21,5 +21,11 @@
         android:id="@+id/nav_categories"
         android:icon="@android:drawable/ic_menu_manage"
         android:title="Kategorije"/>
+    <item
+        android:id="@+id/nav_tasks"
+        android:icon="@android:drawable/ic_menu_agenda"
+        android:title="Tasks" />
+
+
 
 </menu>
