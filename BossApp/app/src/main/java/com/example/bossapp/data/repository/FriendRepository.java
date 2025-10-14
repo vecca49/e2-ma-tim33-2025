@@ -7,8 +7,9 @@ import com.example.bossapp.data.model.User;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.Query;
+import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.WriteBatch;
+import com.google.firebase.firestore.QuerySnapshot;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,7 +19,7 @@ public class FriendRepository {
     private static final String COLLECTION_USERS = "users";
     private static final String COLLECTION_FRIEND_REQUESTS = "friendRequests";
 
-    private FirebaseFirestore db;
+    public FirebaseFirestore db;
 
     public FriendRepository() {
         db = FirebaseFirestore.getInstance();
@@ -274,5 +275,13 @@ public class FriendRepository {
                     Log.e(TAG, "Error loading all users", e);
                     listener.onError(e);
                 });
+    }
+
+    public ListenerRegistration listenToFriendRequests(String userId,
+                                                       com.google.firebase.firestore.EventListener<QuerySnapshot> listener) {
+        return db.collection(COLLECTION_FRIEND_REQUESTS)
+                .whereEqualTo("receiverId", userId)
+                .whereEqualTo("status", "pending")
+                .addSnapshotListener(listener);
     }
 }

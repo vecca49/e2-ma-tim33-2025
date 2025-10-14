@@ -13,6 +13,11 @@
         android:icon="@android:drawable/ic_menu_info_details"
         android:title="Statistics"/>
     <item
+        android:id="@+id/nav_alliance"
+        android:icon="@drawable/ic_alliance"
+        android:title="Alliance" />
+
+    <item
         android:id="@+id/nav_categories"
         android:icon="@android:drawable/ic_menu_manage"
         android:title="Kategorije"/>

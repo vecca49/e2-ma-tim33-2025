@@ -8,6 +8,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.WindowCompat;
 import androidx.fragment.app.Fragment;
 
+import com.example.bossapp.presentation.alliance.AllianceFragment;
 import com.example.bossapp.presentation.home.HomeFragment;
 import com.example.bossapp.presentation.profile.ProfileFragment;
 import com.example.bossapp.presentation.statistics.StatisticsFragment;
@@ -73,6 +74,11 @@ public class MainActivity extends AppCompatActivity {
                 }
 
 
+                else if (itemId == R.id.nav_alliance) {
+                    selectedFragment = new AllianceFragment();
+                    tag = "ALLIANCE";
+                }
+
 
                 if (selectedFragment != null) {
                     loadFragment(selectedFragment, tag);
@@ -110,6 +116,9 @@ public class MainActivity extends AppCompatActivity {
                 bottomNavigationView.setSelectedItemId(R.id.nav_statistics);
             } else if (previousTag.equals("TASKS")) {
                 bottomNavigationView.setSelectedItemId(R.id.nav_tasks);
+            }
+            else if (previousTag.equals("ALLIANCE")) {
+                bottomNavigationView.setSelectedItemId(R.id.nav_alliance);
             }
 
         } else {
