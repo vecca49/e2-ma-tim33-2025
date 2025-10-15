@@ -257,6 +257,15 @@ public class AllianceFragment extends BaseFragment {
     private void showLeaveAllianceDialog() {
         if (currentAlliance == null) return;
 
+        // First check if there's an active mission
+        if (currentAlliance.getCurrentMissionId() != null &&
+                !currentAlliance.getCurrentMissionId().isEmpty()) {
+            Toast.makeText(requireContext(),
+                    "Cannot leave alliance during active mission",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         new AlertDialog.Builder(requireContext())
                 .setTitle("Leave Alliance")
                 .setMessage("Are you sure you want to leave " + currentAlliance.getAllianceName() + "?")

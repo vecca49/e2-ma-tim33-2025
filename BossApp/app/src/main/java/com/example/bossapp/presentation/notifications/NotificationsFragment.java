@@ -2,6 +2,7 @@ package com.example.bossapp.presentation.notifications;
 
 import android.app.AlertDialog;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -25,6 +26,8 @@ import com.example.bossapp.presentation.alliance.AllianceInvitationAdapter;
 import com.example.bossapp.presentation.base.BaseFragment;
 import com.example.bossapp.presentation.friends.FriendRequestAdapter;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -46,6 +49,7 @@ public class NotificationsFragment extends BaseFragment {
     private UserRepository userRepository;
     private User currentUser;
     private Alliance currentAlliance;
+    private static final String TAG = "NotificationsFragment";
 
     @Nullable
     @Override
@@ -293,6 +297,30 @@ public class NotificationsFragment extends BaseFragment {
 
     private void acceptInvitation(AllianceInvitation invitation, String currentUserId,
                                   String currentAllianceId, boolean isCurrentUserLeader) {
+        // First check if current alliance has active mission
+        if (currentAllianceId != null && !currentAllianceId.isEmpty()) {
+            allianceRepository.canLeaveAlliance(currentAllianceId, new AllianceRepository.OnAllianceActionListener() {
+                @Override
+                public void onSuccess() {
+                    // No active mission, proceed with acceptance
+                    proceedWithAcceptance(invitation, currentUserId, currentAllianceId, isCurrentUserLeader);
+                }
+
+                @Override
+                public void onError(Exception e) {
+                    Toast.makeText(requireContext(),
+                            "Cannot leave current alliance: " + e.getMessage(),
+                            Toast.LENGTH_LONG).show();
+                }
+            });
+        } else {
+            // No current alliance, proceed directly
+            proceedWithAcceptance(invitation, currentUserId, null, false);
+        }
+    }
+
+    private void proceedWithAcceptance(AllianceInvitation invitation, String currentUserId,
+                                       String currentAllianceId, boolean isCurrentUserLeader) {
         allianceRepository.acceptInvitation(
                 invitation.getInvitationId(),
                 invitation.getAllianceId(),
@@ -337,6 +365,34 @@ public class NotificationsFragment extends BaseFragment {
                         Toast.makeText(requireContext(),
                                 "Error: " + e.getMessage(),
                                 Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
+    private void loadAllianceNotifications() {
+        String currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
+
+        FirebaseFirestore.getInstance()
+                .collection("notifications")
+                .whereEqualTo("userId", currentUserId)
+                .whereEqualTo("type", "alliance_accepted")
+                .whereEqualTo("read", false)
+                .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
+                .addSnapshotListener((queryDocumentSnapshots, error) -> {
+                    if (error != null) {
+                        Log.e(TAG, "Error loading notifications", error);
+                        return;
+                    }
+
+                    if (queryDocumentSnapshots != null) {
+                        for (DocumentSnapshot doc : queryDocumentSnapshots.getDocuments()) {
+                            String message = doc.getString("message");
+                            // Prikaži notifikaciju u UI-ju
+                            Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show();
+
+                            // Označi kao pročitanu
+                            doc.getReference().update("read", true);
+                        }
                     }
                 });
     }
