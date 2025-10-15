@@ -59,4 +59,26 @@ public class NotificationHelper {
 
         notificationManager.notify(NOTIFICATION_ID_BASE + username.hashCode(), builder.build());
     }
+
+    public void sendAllianceDeclinedNotification(String username, String allianceName) {
+        Intent intent = new Intent(context, MainActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+                context,
+                0,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_alliance)
+                .setContentTitle("Alliance Invitation Declined")
+                .setContentText(username + " declined your invitation to " + allianceName)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true);
+
+        notificationManager.notify(NOTIFICATION_ID_BASE + 1 + username.hashCode(), builder.build());
+    }
 }

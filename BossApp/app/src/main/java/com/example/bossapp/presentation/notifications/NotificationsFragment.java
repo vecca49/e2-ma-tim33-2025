@@ -28,11 +28,14 @@ import com.example.bossapp.presentation.friends.FriendRequestAdapter;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.ListenerRegistration;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class NotificationsFragment extends BaseFragment {
+
+    private static final String TAG = "NotificationsFragment";
 
     private RecyclerView rvFriendRequests;
     private RecyclerView rvAllianceInvitations;
@@ -49,7 +52,8 @@ public class NotificationsFragment extends BaseFragment {
     private UserRepository userRepository;
     private User currentUser;
     private Alliance currentAlliance;
-    private static final String TAG = "NotificationsFragment";
+
+    private ListenerRegistration allianceNotificationListener;
 
     @Nullable
     @Override
@@ -71,6 +75,16 @@ public class NotificationsFragment extends BaseFragment {
 
         setupRecyclerViews();
         loadCurrentUser();
+
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        // Zaustavi listener kada se fragment uništi
+        if (allianceNotificationListener != null) {
+            allianceNotificationListener.remove();
+        }
     }
 
     private void initViews(View view) {
@@ -114,6 +128,7 @@ public class NotificationsFragment extends BaseFragment {
         rvAllianceInvitations.setLayoutManager(new LinearLayoutManager(requireContext()));
         rvAllianceInvitations.setAdapter(allianceInvitationAdapter);
     }
+
 
     private void loadCurrentUser() {
         String currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
@@ -262,13 +277,11 @@ public class NotificationsFragment extends BaseFragment {
         String currentAllianceId = currentUser != null ? currentUser.getCurrentAllianceId() : null;
         boolean isLeader = currentAlliance != null && currentAlliance.isLeader(currentUserId);
 
-        // If user has no alliance, accept directly
         if (currentAllianceId == null || currentAllianceId.isEmpty()) {
             acceptInvitation(invitation, currentUserId, null, false);
             return;
         }
 
-        // If user is a LEADER, show special warning about disbanding
         if (isLeader) {
             new AlertDialog.Builder(requireContext())
                     .setTitle("Leave Current Alliance")
@@ -282,7 +295,6 @@ public class NotificationsFragment extends BaseFragment {
                     .setNegativeButton("Cancel", null)
                     .show();
         } else {
-            // If user is just a member, normal warning
             new AlertDialog.Builder(requireContext())
                     .setTitle("Leave Current Alliance")
                     .setMessage("Are you sure you want to leave your current alliance and join " +
@@ -299,20 +311,21 @@ public class NotificationsFragment extends BaseFragment {
                                   String currentAllianceId, boolean isCurrentUserLeader) {
         // First check if current alliance has active mission
         if (currentAllianceId != null && !currentAllianceId.isEmpty()) {
-            allianceRepository.canLeaveAlliance(currentAllianceId, new AllianceRepository.OnAllianceActionListener() {
-                @Override
-                public void onSuccess() {
-                    // No active mission, proceed with acceptance
-                    proceedWithAcceptance(invitation, currentUserId, currentAllianceId, isCurrentUserLeader);
-                }
+            allianceRepository.canLeaveAlliance(currentAllianceId,
+                    new AllianceRepository.OnAllianceActionListener() {
+                        @Override
+                        public void onSuccess() {
+                            // No active mission, proceed with acceptance
+                            proceedWithAcceptance(invitation, currentUserId, currentAllianceId, isCurrentUserLeader);
+                        }
 
-                @Override
-                public void onError(Exception e) {
-                    Toast.makeText(requireContext(),
-                            "Cannot leave current alliance: " + e.getMessage(),
-                            Toast.LENGTH_LONG).show();
-                }
-            });
+                        @Override
+                        public void onError(Exception e) {
+                            Toast.makeText(requireContext(),
+                                    "Cannot leave current alliance: " + e.getMessage(),
+                                    Toast.LENGTH_LONG).show();
+                        }
+                    });
         } else {
             // No current alliance, proceed directly
             proceedWithAcceptance(invitation, currentUserId, null, false);
@@ -365,34 +378,6 @@ public class NotificationsFragment extends BaseFragment {
                         Toast.makeText(requireContext(),
                                 "Error: " + e.getMessage(),
                                 Toast.LENGTH_SHORT).show();
-                    }
-                });
-    }
-
-    private void loadAllianceNotifications() {
-        String currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
-
-        FirebaseFirestore.getInstance()
-                .collection("notifications")
-                .whereEqualTo("userId", currentUserId)
-                .whereEqualTo("type", "alliance_accepted")
-                .whereEqualTo("read", false)
-                .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
-                .addSnapshotListener((queryDocumentSnapshots, error) -> {
-                    if (error != null) {
-                        Log.e(TAG, "Error loading notifications", error);
-                        return;
-                    }
-
-                    if (queryDocumentSnapshots != null) {
-                        for (DocumentSnapshot doc : queryDocumentSnapshots.getDocuments()) {
-                            String message = doc.getString("message");
-                            // Prikaži notifikaciju u UI-ju
-                            Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show();
-
-                            // Označi kao pročitanu
-                            doc.getReference().update("read", true);
-                        }
                     }
                 });
     }

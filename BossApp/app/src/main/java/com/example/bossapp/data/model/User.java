@@ -9,7 +9,7 @@ public class User {
     private String userId;
     private String email;
     private String username;
-    private int avatarIndex; // 0-4 for 5 predefined avatars
+    private int avatarIndex;
     private int level;
     private String title;
     private int xp;
@@ -30,7 +30,7 @@ public class User {
         this.username = username;
         this.avatarIndex = avatarIndex;
         this.level = 0;
-        this.title = "Rookie"; // title at the beginning
+        this.title = "Rookie";
         this.xp = 0;
         this.pp = 0;
         this.coins = 0;
@@ -40,7 +40,6 @@ public class User {
         this.currentAllianceId = null;
     }
 
-    // Convert to Map for Firebase
     public Map<String, Object> toMap() {
         Map<String, Object> map = new HashMap<>();
         map.put("userId", userId);
@@ -55,7 +54,7 @@ public class User {
         map.put("createdAt", createdAt);
         map.put("emailVerified", emailVerified);
         map.put("friendIds", friendIds != null ? friendIds : new ArrayList<>());
-        map.put("currentAllianceId", currentAllianceId); // FIXED: was "currentAlianceId"
+        map.put("currentAllianceId", currentAllianceId);
         return map;
     }
 
@@ -127,6 +126,10 @@ public class User {
     public String getCurrentAllianceId() { return currentAllianceId; }
     public void setCurrentAllianceId(String currentAllianceId) {
         this.currentAllianceId = currentAllianceId;
+    }
+
+    public void setCurrentAlianceId(String currentAlianceId) {
+        this.currentAllianceId = currentAlianceId;
     }
 
     public boolean isFriend(String userId) {
