@@ -11,13 +11,16 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.WriteBatch;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class AllianceRepository {
     private static final String TAG = "AllianceRepository";
     private static final String COLLECTION_ALLIANCES = "alliances";
     private static final String COLLECTION_ALLIANCE_INVITATIONS = "allianceInvitations";
     private static final String COLLECTION_USERS = "users";
+    private static final String COLLECTION_NOTIFICATIONS = "notifications";
 
     private FirebaseFirestore db;
 
@@ -56,7 +59,6 @@ public class AllianceRepository {
                 .document(allianceId)
                 .set(alliance.toMap())
                 .addOnSuccessListener(aVoid -> {
-                    // Update user's currentAllianceId
                     db.collection(COLLECTION_USERS)
                             .document(leaderId)
                             .update("currentAllianceId", allianceId)
@@ -92,7 +94,6 @@ public class AllianceRepository {
                                     Alliance alliance = allianceDoc.toObject(Alliance.class);
                                     listener.onSuccess(alliance);
                                 } else {
-                                    // Savez ne postoji više, ukloni ga kod korisnika
                                     db.collection(COLLECTION_USERS)
                                             .document(userId)
                                             .update("currentAllianceId", null)
@@ -112,7 +113,6 @@ public class AllianceRepository {
     public void sendInvitation(String allianceId, String allianceName, String senderId,
                                String senderUsername, String receiverId,
                                OnAllianceActionListener listener) {
-        // First check if alliance still exists
         db.collection(COLLECTION_ALLIANCES)
                 .document(allianceId)
                 .get()
@@ -122,7 +122,6 @@ public class AllianceRepository {
                         return;
                     }
 
-                    // Check if user already has pending invitation
                     checkUserAllianceStatus(receiverId, new OnAllianceActionListener() {
                         @Override
                         public void onSuccess() {
@@ -152,7 +151,6 @@ public class AllianceRepository {
     }
 
     private void checkUserAllianceStatus(String userId, OnAllianceActionListener listener) {
-        // Check only for pending invitations
         db.collection(COLLECTION_ALLIANCE_INVITATIONS)
                 .whereEqualTo("receiverId", userId)
                 .whereEqualTo("status", "pending")
@@ -167,7 +165,7 @@ public class AllianceRepository {
                 .addOnFailureListener(listener::onError);
     }
 
-    // ===== GET PENDING INVITATIONS (with alliance existence check) =====
+    // ===== GET PENDING INVITATIONS =====
     public void getPendingInvitations(String userId, OnInvitationsLoadListener listener) {
         db.collection(COLLECTION_ALLIANCE_INVITATIONS)
                 .whereEqualTo("receiverId", userId)
@@ -188,7 +186,6 @@ public class AllianceRepository {
                     for (DocumentSnapshot doc : querySnapshot.getDocuments()) {
                         AllianceInvitation invitation = doc.toObject(AllianceInvitation.class);
                         if (invitation != null) {
-                            // Check if alliance still exists
                             db.collection(COLLECTION_ALLIANCES)
                                     .document(invitation.getAllianceId())
                                     .get()
@@ -196,16 +193,12 @@ public class AllianceRepository {
                                         if (allianceDoc.exists()) {
                                             validInvitations.add(invitation);
                                         } else {
-                                            // Mark for deletion
                                             invalidInvitationIds.add(invitation.getInvitationId());
                                         }
 
                                         processedInvitations[0]++;
                                         if (processedInvitations[0] == totalInvitations[0]) {
-                                            // Delete invalid invitations
                                             deleteInvalidInvitations(invalidInvitationIds);
-
-                                            // Sort and return valid invitations
                                             validInvitations.sort((i1, i2) ->
                                                     Long.compare(i2.getTimestamp(), i1.getTimestamp()));
                                             listener.onSuccess(validInvitations);
@@ -243,68 +236,95 @@ public class AllianceRepository {
     public void acceptInvitation(String invitationId, String allianceId, String userId,
                                  String currentAllianceId, boolean isCurrentUserLeader,
                                  OnAllianceActionListener listener) {
-        WriteBatch batch = db.batch();
 
-        // Delete invitation instead of updating status
-        batch.delete(db.collection(COLLECTION_ALLIANCE_INVITATIONS).document(invitationId));
+        Log.d(TAG, "Starting acceptInvitation for user: " + userId);
 
-        // If user is leader of current alliance, disband it completely
-        if (currentAllianceId != null && !currentAllianceId.isEmpty() && isCurrentUserLeader) {
-            // Get current alliance to find all members
-            db.collection(COLLECTION_ALLIANCES)
-                    .document(currentAllianceId)
-                    .get()
-                    .addOnSuccessListener(allianceDoc -> {
-                        if (allianceDoc.exists()) {
-                            Alliance currentAlliance = allianceDoc.toObject(Alliance.class);
-                            if (currentAlliance != null) {
-                                // Complete disbanding - delete alliance and clear all members
-                                disbandAllianceCompletely(currentAllianceId,
-                                        currentAlliance.getMemberIds(),
-                                        new OnAllianceActionListener() {
-                                            @Override
-                                            public void onSuccess() {
-                                                // Now join new alliance
-                                                joinNewAlliance(batch, allianceId, userId, listener);
-                                            }
+        // First, get the invitation to retrieve sender information
+        db.collection(COLLECTION_ALLIANCE_INVITATIONS)
+                .document(invitationId)
+                .get()
+                .addOnSuccessListener(invitationDoc -> {
+                    if (!invitationDoc.exists()) {
+                        Log.e(TAG, "Invitation not found");
+                        listener.onError(new Exception("Invitation not found"));
+                        return;
+                    }
 
-                                            @Override
-                                            public void onError(Exception e) {
-                                                listener.onError(e);
-                                            }
-                                        });
-                                return;
-                            }
+                    AllianceInvitation invitation = invitationDoc.toObject(AllianceInvitation.class);
+                    if (invitation == null) {
+                        Log.e(TAG, "Failed to parse invitation");
+                        listener.onError(new Exception("Failed to parse invitation"));
+                        return;
+                    }
+
+                    Log.d(TAG, "Invitation found. Sender: " + invitation.getSenderId() +
+                            ", Alliance: " + invitation.getAllianceName());
+
+                    WriteBatch batch = db.batch();
+                    batch.delete(db.collection(COLLECTION_ALLIANCE_INVITATIONS).document(invitationId));
+
+                    if (currentAllianceId != null && !currentAllianceId.isEmpty() && isCurrentUserLeader) {
+                        db.collection(COLLECTION_ALLIANCES)
+                                .document(currentAllianceId)
+                                .get()
+                                .addOnSuccessListener(allianceDoc -> {
+                                    if (allianceDoc.exists()) {
+                                        Alliance currentAlliance = allianceDoc.toObject(Alliance.class);
+                                        if (currentAlliance != null) {
+                                            disbandAllianceCompletely(currentAllianceId,
+                                                    currentAlliance.getMemberIds(),
+                                                    new OnAllianceActionListener() {
+                                                        @Override
+                                                        public void onSuccess() {
+                                                            joinNewAllianceAndNotify(batch, allianceId,
+                                                                    userId, invitation, listener);
+                                                        }
+
+                                                        @Override
+                                                        public void onError(Exception e) {
+                                                            listener.onError(e);
+                                                        }
+                                                    });
+                                            return;
+                                        }
+                                    }
+                                    joinNewAllianceAndNotify(batch, allianceId, userId, invitation, listener);
+                                })
+                                .addOnFailureListener(e ->
+                                        joinNewAllianceAndNotify(batch, allianceId, userId, invitation, listener));
+                    } else {
+                        if (currentAllianceId != null && !currentAllianceId.isEmpty()) {
+                            batch.update(db.collection(COLLECTION_ALLIANCES).document(currentAllianceId),
+                                    "memberIds", FieldValue.arrayRemove(userId));
                         }
-                        // If no current alliance, just join new one
-                        joinNewAlliance(batch, allianceId, userId, listener);
-                    })
-                    .addOnFailureListener(e -> joinNewAlliance(batch, allianceId, userId, listener));
-        } else {
-            // Leave current alliance if exists (but not leader)
-            if (currentAllianceId != null && !currentAllianceId.isEmpty()) {
-                batch.update(db.collection(COLLECTION_ALLIANCES).document(currentAllianceId),
-                        "memberIds", FieldValue.arrayRemove(userId));
-            }
-
-            // Join new alliance
-            joinNewAlliance(batch, allianceId, userId, listener);
-        }
+                        joinNewAllianceAndNotify(batch, allianceId, userId, invitation, listener);
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Error loading invitation", e);
+                    listener.onError(e);
+                });
     }
 
-    private void joinNewAlliance(WriteBatch batch, String allianceId, String userId,
-                                 OnAllianceActionListener listener) {
-        // Add user to new alliance
+    private void joinNewAllianceAndNotify(WriteBatch batch, String allianceId, String userId,
+                                          AllianceInvitation invitation,
+                                          OnAllianceActionListener listener) {
+        Log.d(TAG, "Joining new alliance and sending notification");
+
         batch.update(db.collection(COLLECTION_ALLIANCES).document(allianceId),
                 "memberIds", FieldValue.arrayUnion(userId));
 
-        // Update user's currentAllianceId
         batch.update(db.collection(COLLECTION_USERS).document(userId),
                 "currentAllianceId", allianceId);
 
         batch.commit()
                 .addOnSuccessListener(aVoid -> {
-                    Log.d(TAG, "Alliance invitation accepted");
+                    Log.d(TAG, "Alliance invitation accepted, now sending notification");
+
+                    // Send notification to alliance leader
+                    sendAcceptanceNotification(invitation.getSenderId(), userId,
+                            invitation.getAllianceName());
+
                     listener.onSuccess();
                 })
                 .addOnFailureListener(e -> {
@@ -313,19 +333,131 @@ public class AllianceRepository {
                 });
     }
 
-    // ===== DECLINE INVITATION =====
-    public void declineInvitation(String invitationId, OnAllianceActionListener listener) {
-        // DELETE invitation instead of updating status
-        db.collection(COLLECTION_ALLIANCE_INVITATIONS)
-                .document(invitationId)
-                .delete()
-                .addOnSuccessListener(aVoid -> {
-                    Log.d(TAG, "Alliance invitation declined and deleted");
-                    listener.onSuccess();
+    private void sendAcceptanceNotification(String leaderId, String acceptedUserId,
+                                            String allianceName) {
+        Log.d(TAG, "Sending acceptance notification to leader: " + leaderId);
+
+        db.collection(COLLECTION_USERS)
+                .document(acceptedUserId)
+                .get()
+                .addOnSuccessListener(userDoc -> {
+                    if (userDoc.exists()) {
+                        User acceptedUser = userDoc.toObject(User.class);
+                        if (acceptedUser != null) {
+                            Log.d(TAG, "Creating notification for user: " + acceptedUser.getUsername());
+
+                            Map<String, Object> notificationData = new HashMap<>();
+                            notificationData.put("type", "alliance_accepted");
+                            notificationData.put("userId", leaderId);
+                            notificationData.put("acceptedUsername", acceptedUser.getUsername());
+                            notificationData.put("allianceName", allianceName);
+                            notificationData.put("message", acceptedUser.getUsername() +
+                                    " accepted your invitation to " + allianceName);
+                            notificationData.put("timestamp", System.currentTimeMillis());
+                            notificationData.put("read", false);
+
+                            db.collection(COLLECTION_NOTIFICATIONS)
+                                    .add(notificationData)
+                                    .addOnSuccessListener(documentReference -> {
+                                        Log.d(TAG, "Acceptance notification sent successfully. Doc ID: " +
+                                                documentReference.getId());
+                                    })
+                                    .addOnFailureListener(e -> {
+                                        Log.e(TAG, "Error sending acceptance notification", e);
+                                    });
+                        } else {
+                            Log.e(TAG, "Failed to parse accepted user");
+                        }
+                    } else {
+                        Log.e(TAG, "Accepted user document doesn't exist");
+                    }
                 })
                 .addOnFailureListener(e -> {
-                    Log.e(TAG, "Error declining invitation", e);
-                    listener.onError(e);
+                    Log.e(TAG, "Error loading user for notification", e);
+                });
+    }
+
+    // ===== DECLINE INVITATION =====
+    public void declineInvitation(String invitationId, OnAllianceActionListener listener) {
+        Log.d(TAG, "Starting declineInvitation");
+
+        db.collection(COLLECTION_ALLIANCE_INVITATIONS)
+                .document(invitationId)
+                .get()
+                .addOnSuccessListener(invitationDoc -> {
+                    if (invitationDoc.exists()) {
+                        AllianceInvitation invitation = invitationDoc.toObject(AllianceInvitation.class);
+                        if (invitation != null) {
+                            Log.d(TAG, "Invitation found, sending decline notification");
+
+                            // Send notification to leader
+                            sendDeclineNotification(invitation.getSenderId(),
+                                    invitation.getReceiverId(),
+                                    invitation.getAllianceName());
+
+                            // Delete invitation
+                            db.collection(COLLECTION_ALLIANCE_INVITATIONS)
+                                    .document(invitationId)
+                                    .delete()
+                                    .addOnSuccessListener(aVoid -> {
+                                        Log.d(TAG, "Alliance invitation declined and deleted");
+                                        listener.onSuccess();
+                                    })
+                                    .addOnFailureListener(e -> {
+                                        Log.e(TAG, "Error declining invitation", e);
+                                        listener.onError(e);
+                                    });
+                        } else {
+                            listener.onError(new Exception("Failed to parse invitation"));
+                        }
+                    } else {
+                        listener.onError(new Exception("Invitation not found"));
+                    }
+                })
+                .addOnFailureListener(listener::onError);
+    }
+
+    private void sendDeclineNotification(String leaderId, String declinedUserId,
+                                         String allianceName) {
+        Log.d(TAG, "Sending decline notification to leader: " + leaderId);
+
+        db.collection(COLLECTION_USERS)
+                .document(declinedUserId)
+                .get()
+                .addOnSuccessListener(userDoc -> {
+                    if (userDoc.exists()) {
+                        User declinedUser = userDoc.toObject(User.class);
+                        if (declinedUser != null) {
+                            Log.d(TAG, "Creating decline notification for user: " + declinedUser.getUsername());
+
+                            Map<String, Object> notificationData = new HashMap<>();
+                            notificationData.put("type", "alliance_declined");
+                            notificationData.put("userId", leaderId);
+                            notificationData.put("declinedUsername", declinedUser.getUsername());
+                            notificationData.put("allianceName", allianceName);
+                            notificationData.put("message", declinedUser.getUsername() +
+                                    " declined your invitation to " + allianceName);
+                            notificationData.put("timestamp", System.currentTimeMillis());
+                            notificationData.put("read", false);
+
+                            db.collection(COLLECTION_NOTIFICATIONS)
+                                    .add(notificationData)
+                                    .addOnSuccessListener(documentReference -> {
+                                        Log.d(TAG, "Decline notification sent successfully. Doc ID: " +
+                                                documentReference.getId());
+                                    })
+                                    .addOnFailureListener(e -> {
+                                        Log.e(TAG, "Error sending decline notification", e);
+                                    });
+                        } else {
+                            Log.e(TAG, "Failed to parse declined user");
+                        }
+                    } else {
+                        Log.e(TAG, "Declined user document doesn't exist");
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Error loading user for decline notification", e);
                 });
     }
 
@@ -333,11 +465,9 @@ public class AllianceRepository {
     public void leaveAlliance(String userId, String allianceId, OnAllianceActionListener listener) {
         WriteBatch batch = db.batch();
 
-        // Remove user from alliance members
         batch.update(db.collection(COLLECTION_ALLIANCES).document(allianceId),
                 "memberIds", FieldValue.arrayRemove(userId));
 
-        // Clear user's currentAllianceId
         batch.update(db.collection(COLLECTION_USERS).document(userId),
                 "currentAllianceId", null);
 
@@ -352,15 +482,36 @@ public class AllianceRepository {
                 });
     }
 
-    // ===== DISBAND ALLIANCE COMPLETELY (delete from DB) =====
+    // ===== CHECK IF CAN LEAVE ALLIANCE =====
+    public void canLeaveAlliance(String allianceId, OnAllianceActionListener listener) {
+        db.collection(COLLECTION_ALLIANCES)
+                .document(allianceId)
+                .get()
+                .addOnSuccessListener(doc -> {
+                    if (doc.exists()) {
+                        Alliance alliance = doc.toObject(Alliance.class);
+                        if (alliance != null) {
+                            String missionId = alliance.getCurrentMissionId();
+                            if (missionId != null && !missionId.isEmpty()) {
+                                listener.onError(new Exception("Cannot leave alliance during active mission"));
+                            } else {
+                                listener.onSuccess();
+                            }
+                            return;
+                        }
+                    }
+                    listener.onError(new Exception("Alliance not found"));
+                })
+                .addOnFailureListener(listener::onError);
+    }
+
+    // ===== DISBAND ALLIANCE COMPLETELY =====
     public void disbandAllianceCompletely(String allianceId, List<String> memberIds,
                                           OnAllianceActionListener listener) {
         WriteBatch batch = db.batch();
 
-        // DELETE alliance document completely
         batch.delete(db.collection(COLLECTION_ALLIANCES).document(allianceId));
 
-        // Remove alliance from all members
         if (memberIds != null) {
             for (String memberId : memberIds) {
                 batch.update(db.collection(COLLECTION_USERS).document(memberId),
@@ -368,7 +519,6 @@ public class AllianceRepository {
             }
         }
 
-        // Delete all pending invitations for this alliance
         db.collection(COLLECTION_ALLIANCE_INVITATIONS)
                 .whereEqualTo("allianceId", allianceId)
                 .whereEqualTo("status", "pending")
@@ -389,7 +539,6 @@ public class AllianceRepository {
                             });
                 })
                 .addOnFailureListener(e -> {
-                    // If we can't get invitations, still commit the batch
                     batch.commit()
                             .addOnSuccessListener(aVoid -> {
                                 Log.d(TAG, "Alliance disbanded (without invitation cleanup)");

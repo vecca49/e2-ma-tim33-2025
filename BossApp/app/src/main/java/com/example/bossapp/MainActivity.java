@@ -1,7 +1,9 @@
 package com.example.bossapp;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.view.MenuItem;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -16,15 +18,23 @@ import com.example.bossapp.presentation.task.TaskFragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.navigation.NavigationBarView;
 import com.example.bossapp.presentation.category.CreateCategoryFragment;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.ListenerRegistration;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
+    private static final String TAG = "MainActivity";
+
     private BottomNavigationView bottomNavigationView;
     private String currentFragmentTag = "HOME";
     private List<String> navigationStack = new ArrayList<>();
+
+    private ListenerRegistration notificationListener;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,7 +67,6 @@ public class MainActivity extends AppCompatActivity {
                     selectedFragment = new HomeFragment();
                     tag = "HOME";
                 } else if (itemId == R.id.nav_profile) {
-                    // Ne šaljemo userId argument - prikazujemo MOJ profil
                     selectedFragment = new ProfileFragment();
                     tag = "PROFILE";
                 } else if (itemId == R.id.nav_statistics) {
@@ -69,16 +78,13 @@ public class MainActivity extends AppCompatActivity {
                     tag = "CATEGORIES";
                 }
                 else if (itemId == R.id.nav_tasks) {
-                    selectedFragment = new TaskFragment(); // <-- tvoj fragment za zadatke
+                    selectedFragment = new TaskFragment();
                     tag = "TASKS";
                 }
-
-
                 else if (itemId == R.id.nav_alliance) {
                     selectedFragment = new AllianceFragment();
                     tag = "ALLIANCE";
                 }
-
 
                 if (selectedFragment != null) {
                     loadFragment(selectedFragment, tag);
@@ -88,6 +94,33 @@ public class MainActivity extends AppCompatActivity {
                 return false;
             }
         });
+
+        // Start listening for notifications
+        startListeningForNotifications();
+    }
+
+    private void startListeningForNotifications() {
+        String currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
+
+        Log.d(TAG, "Starting notification listener for user: " + currentUserId);
+
+        notificationListener = FirebaseFirestore.getInstance()
+                .collection("notifications")
+                .whereEqualTo("userId", currentUserId)
+                .whereEqualTo("read", false)
+                .addSnapshotListener((querySnapshot, error) -> {
+                    if (error != null) {
+                        Log.e(TAG, "Error listening to notifications", error);
+                        return;
+                    }
+
+                    if (querySnapshot != null && !querySnapshot.isEmpty()) {
+                        Log.d(TAG, "Received " + querySnapshot.size() + " new notifications");
+
+                        // Samo loguj da su stigle notifikacije
+                        // NotificationsFragment će ih prikazati
+                    }
+                });
     }
 
     private void loadFragment(Fragment fragment, String tag) {
@@ -139,6 +172,15 @@ public class MainActivity extends AppCompatActivity {
             bottomNavigationView.setSelectedItemId(R.id.nav_home);
         } else {
             super.onBackPressed();
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (notificationListener != null) {
+            notificationListener.remove();
+            Log.d(TAG, "Notification listener removed");
         }
     }
 }

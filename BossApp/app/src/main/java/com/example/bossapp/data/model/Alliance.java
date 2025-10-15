@@ -124,4 +124,8 @@ public class Alliance {
     public boolean hasMission() {
         return currentMissionId != null && !currentMissionId.isEmpty();
     }
+
+    public void setIsActive(boolean isActive) {
+        this.isActive = isActive;
+    }
 }
