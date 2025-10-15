@@ -17,6 +17,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.bossapp.R;
 import com.example.bossapp.data.model.Alliance;
 import com.example.bossapp.data.model.AllianceInvitation;
+import com.example.bossapp.data.model.AllianceNotification;
 import com.example.bossapp.data.model.FriendRequest;
 import com.example.bossapp.data.model.User;
 import com.example.bossapp.data.repository.AllianceRepository;
@@ -39,13 +40,16 @@ public class NotificationsFragment extends BaseFragment {
 
     private RecyclerView rvFriendRequests;
     private RecyclerView rvAllianceInvitations;
+    private RecyclerView rvAllianceNotifications;
     private LinearLayout tvEmptyState;
 
     private FriendRequestAdapter friendRequestAdapter;
     private AllianceInvitationAdapter allianceInvitationAdapter;
+    private AllianceNotificationAdapter allianceNotificationAdapter;
 
     private List<FriendRequest> friendRequestList = new ArrayList<>();
     private List<AllianceInvitation> allianceInvitationList = new ArrayList<>();
+    private List<AllianceNotification> allianceNotificationList = new ArrayList<>();
 
     private FriendRepository friendRepository;
     private AllianceRepository allianceRepository;
@@ -75,13 +79,12 @@ public class NotificationsFragment extends BaseFragment {
 
         setupRecyclerViews();
         loadCurrentUser();
-
+        startListeningForAllianceNotifications();
     }
 
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        // Zaustavi listener kada se fragment uništi
         if (allianceNotificationListener != null) {
             allianceNotificationListener.remove();
         }
@@ -90,10 +93,23 @@ public class NotificationsFragment extends BaseFragment {
     private void initViews(View view) {
         rvFriendRequests = view.findViewById(R.id.rvFriendRequests);
         rvAllianceInvitations = view.findViewById(R.id.rvAllianceInvitations);
+        rvAllianceNotifications = view.findViewById(R.id.rvAllianceNotifications);
         tvEmptyState = view.findViewById(R.id.tvEmptyState);
     }
 
     private void setupRecyclerViews() {
+        // Alliance Notifications
+        allianceNotificationAdapter = new AllianceNotificationAdapter(allianceNotificationList,
+                new AllianceNotificationAdapter.OnNotificationActionListener() {
+                    @Override
+                    public void onDismiss(AllianceNotification notification) {
+                        handleDismissNotification(notification);
+                    }
+                });
+
+        rvAllianceNotifications.setLayoutManager(new LinearLayoutManager(requireContext()));
+        rvAllianceNotifications.setAdapter(allianceNotificationAdapter);
+
         // Friend Requests
         friendRequestAdapter = new FriendRequestAdapter(friendRequestList,
                 new FriendRequestAdapter.OnRequestActionListener() {
@@ -127,6 +143,71 @@ public class NotificationsFragment extends BaseFragment {
 
         rvAllianceInvitations.setLayoutManager(new LinearLayoutManager(requireContext()));
         rvAllianceInvitations.setAdapter(allianceInvitationAdapter);
+    }
+
+    private void startListeningForAllianceNotifications() {
+        String currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
+
+        Log.d(TAG, "Starting to listen for alliance notifications");
+
+        allianceNotificationListener = FirebaseFirestore.getInstance()
+                .collection("notifications")
+                .whereEqualTo("userId", currentUserId)
+                .whereEqualTo("read", false)
+                .addSnapshotListener((querySnapshot, error) -> {
+                    if (error != null) {
+                        Log.e(TAG, "Error listening to notifications", error);
+                        return;
+                    }
+
+                    if (querySnapshot != null) {
+                        allianceNotificationList.clear();
+
+                        for (DocumentSnapshot doc : querySnapshot.getDocuments()) {
+                            String type = doc.getString("type");
+
+                            if ("alliance_accepted".equals(type) || "alliance_declined".equals(type)) {
+                                AllianceNotification notification = new AllianceNotification();
+                                notification.setNotificationId(doc.getId());
+                                notification.setType(type);
+                                notification.setUserId(doc.getString("userId"));
+
+                                if ("alliance_accepted".equals(type)) {
+                                    notification.setUsername(doc.getString("acceptedUsername"));
+                                } else {
+                                    notification.setUsername(doc.getString("declinedUsername"));
+                                }
+
+                                notification.setAllianceName(doc.getString("allianceName"));
+                                notification.setMessage(doc.getString("message"));
+                                notification.setTimestamp(doc.getLong("timestamp"));
+                                notification.setRead(doc.getBoolean("read"));
+
+                                allianceNotificationList.add(notification);
+                            }
+                        }
+
+                        // Sort by timestamp (newest first)
+                        allianceNotificationList.sort((n1, n2) ->
+                                Long.compare(n2.getTimestamp(), n1.getTimestamp()));
+
+                        allianceNotificationAdapter.notifyDataSetChanged();
+                        updateEmptyState();
+                    }
+                });
+    }
+
+    private void handleDismissNotification(AllianceNotification notification) {
+        FirebaseFirestore.getInstance()
+                .collection("notifications")
+                .document(notification.getNotificationId())
+                .update("read", true)
+                .addOnSuccessListener(aVoid -> {
+                    Toast.makeText(requireContext(), "Notification dismissed", Toast.LENGTH_SHORT).show();
+                })
+                .addOnFailureListener(e -> {
+                    Toast.makeText(requireContext(), "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
     }
 
 
@@ -215,14 +296,18 @@ public class NotificationsFragment extends BaseFragment {
     }
 
     private void updateEmptyState() {
-        boolean hasNotifications = !friendRequestList.isEmpty() || !allianceInvitationList.isEmpty();
+        boolean hasNotifications = !friendRequestList.isEmpty() ||
+                !allianceInvitationList.isEmpty() ||
+                !allianceNotificationList.isEmpty();
 
         if (hasNotifications) {
             tvEmptyState.setVisibility(View.GONE);
+            rvAllianceNotifications.setVisibility(allianceNotificationList.isEmpty() ? View.GONE : View.VISIBLE);
             rvFriendRequests.setVisibility(friendRequestList.isEmpty() ? View.GONE : View.VISIBLE);
             rvAllianceInvitations.setVisibility(allianceInvitationList.isEmpty() ? View.GONE : View.VISIBLE);
         } else {
             tvEmptyState.setVisibility(View.VISIBLE);
+            rvAllianceNotifications.setVisibility(View.GONE);
             rvFriendRequests.setVisibility(View.GONE);
             rvAllianceInvitations.setVisibility(View.GONE);
         }
@@ -250,7 +335,6 @@ public class NotificationsFragment extends BaseFragment {
                     }
                 });
     }
-
     private void handleRejectFriend(FriendRequest request) {
         friendRepository.rejectFriendRequest(
                 request.getRequestId(),
@@ -271,7 +355,6 @@ public class NotificationsFragment extends BaseFragment {
                     }
                 });
     }
-
     private void handleAcceptAlliance(AllianceInvitation invitation) {
         String currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
         String currentAllianceId = currentUser != null ? currentUser.getCurrentAllianceId() : null;
@@ -309,13 +392,11 @@ public class NotificationsFragment extends BaseFragment {
 
     private void acceptInvitation(AllianceInvitation invitation, String currentUserId,
                                   String currentAllianceId, boolean isCurrentUserLeader) {
-        // First check if current alliance has active mission
         if (currentAllianceId != null && !currentAllianceId.isEmpty()) {
             allianceRepository.canLeaveAlliance(currentAllianceId,
                     new AllianceRepository.OnAllianceActionListener() {
                         @Override
                         public void onSuccess() {
-                            // No active mission, proceed with acceptance
                             proceedWithAcceptance(invitation, currentUserId, currentAllianceId, isCurrentUserLeader);
                         }
 
@@ -327,7 +408,6 @@ public class NotificationsFragment extends BaseFragment {
                         }
                     });
         } else {
-            // No current alliance, proceed directly
             proceedWithAcceptance(invitation, currentUserId, null, false);
         }
     }

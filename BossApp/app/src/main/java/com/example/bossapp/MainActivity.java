@@ -117,36 +117,8 @@ public class MainActivity extends AppCompatActivity {
                     if (querySnapshot != null && !querySnapshot.isEmpty()) {
                         Log.d(TAG, "Received " + querySnapshot.size() + " new notifications");
 
-                        for (DocumentSnapshot doc : querySnapshot.getDocuments()) {
-                            String type = doc.getString("type");
-                            String message = doc.getString("message");
-
-                            Log.d(TAG, "Notification type: " + type + ", message: " + message);
-
-                            if ("alliance_accepted".equals(type)) {
-                                String username = doc.getString("acceptedUsername");
-                                String allianceName = doc.getString("allianceName");
-
-                                Toast.makeText(MainActivity.this,
-                                        username + " accepted your invitation to " + allianceName,
-                                        Toast.LENGTH_LONG).show();
-
-                            } else if ("alliance_declined".equals(type)) {
-                                String username = doc.getString("declinedUsername");
-                                String allianceName = doc.getString("allianceName");
-
-                                Toast.makeText(MainActivity.this,
-                                        username + " declined your invitation to " + allianceName,
-                                        Toast.LENGTH_LONG).show();
-                            }
-
-                            // Mark as read
-                            doc.getReference().update("read", true)
-                                    .addOnSuccessListener(aVoid ->
-                                            Log.d(TAG, "Notification marked as read"))
-                                    .addOnFailureListener(e ->
-                                            Log.e(TAG, "Error marking notification as read", e));
-                        }
+                        // Samo loguj da su stigle notifikacije
+                        // NotificationsFragment će ih prikazati
                     }
                 });
     }
