@@ -93,6 +93,10 @@ public class AllianceNotificationAdapter extends RecyclerView.Adapter<AllianceNo
                         }
                     });
                     break;
+                default:
+                    ivIcon.setImageResource(android.R.drawable.ic_dialog_info);
+                    btnAction.setVisibility(View.GONE);
+                    break;
             }
 
             btnDismiss.setOnClickListener(v -> {

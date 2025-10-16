@@ -31,6 +31,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
+import com.example.bossapp.presentation.alliance.AllianceChatFragment;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -99,7 +100,7 @@ public class NotificationsFragment extends BaseFragment {
     }
 
     private void setupRecyclerViews() {
-        // Alliance Notifications
+        // Alliance Notifications - SA OPEN CHAT FUNKCIJOM
         allianceNotificationAdapter = new AllianceNotificationAdapter(allianceNotificationList,
                 new AllianceNotificationAdapter.OnNotificationActionListener() {
                     @Override
@@ -116,7 +117,7 @@ public class NotificationsFragment extends BaseFragment {
         rvAllianceNotifications.setLayoutManager(new LinearLayoutManager(requireContext()));
         rvAllianceNotifications.setAdapter(allianceNotificationAdapter);
 
-        // Friend Requests (postojeći kod ostaje isti)
+        // Friend Requests
         friendRequestAdapter = new FriendRequestAdapter(friendRequestList,
                 new FriendRequestAdapter.OnRequestActionListener() {
                     @Override
@@ -133,7 +134,7 @@ public class NotificationsFragment extends BaseFragment {
         rvFriendRequests.setLayoutManager(new LinearLayoutManager(requireContext()));
         rvFriendRequests.setAdapter(friendRequestAdapter);
 
-        // Alliance Invitations (postojeći kod ostaje isti)
+        // Alliance Invitations
         allianceInvitationAdapter = new AllianceInvitationAdapter(allianceInvitationList,
                 new AllianceInvitationAdapter.OnInvitationActionListener() {
                     @Override
@@ -150,12 +151,13 @@ public class NotificationsFragment extends BaseFragment {
         rvAllianceInvitations.setLayoutManager(new LinearLayoutManager(requireContext()));
         rvAllianceInvitations.setAdapter(allianceInvitationAdapter);
     }
-
     private void handleOpenChat(AllianceNotification notification) {
         if (notification.getAllianceId() == null || notification.getAllianceId().isEmpty()) {
             Toast.makeText(requireContext(), "Alliance not found", Toast.LENGTH_SHORT).show();
             return;
         }
+
+        Log.d(TAG, "Opening chat for alliance: " + notification.getAllianceId());
 
         // First dismiss the notification
         FirebaseFirestore.getInstance()
@@ -172,8 +174,10 @@ public class NotificationsFragment extends BaseFragment {
                                 if (doc.exists()) {
                                     String allianceName = doc.getString("allianceName");
 
+                                    Log.d(TAG, "Opening chat for: " + allianceName);
+
                                     // Open chat
-                                    AllianceChatFragment  chatFragment = AllianceChatFragment.newInstance(
+                                    AllianceChatFragment chatFragment = AllianceChatFragment.newInstance(
                                             notification.getAllianceId(),
                                             allianceName != null ? allianceName : "Alliance Chat");
 
@@ -189,18 +193,19 @@ public class NotificationsFragment extends BaseFragment {
                                 }
                             })
                             .addOnFailureListener(e -> {
+                                Log.e(TAG, "Error loading alliance", e);
                                 Toast.makeText(requireContext(),
                                         "Error loading alliance: " + e.getMessage(),
                                         Toast.LENGTH_SHORT).show();
                             });
                 })
                 .addOnFailureListener(e -> {
+                    Log.e(TAG, "Error dismissing notification", e);
                     Toast.makeText(requireContext(),
                             "Error dismissing notification: " + e.getMessage(),
                             Toast.LENGTH_SHORT).show();
                 });
     }
-
     private void startListeningForAllianceNotifications() {
         String currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
 
@@ -222,7 +227,7 @@ public class NotificationsFragment extends BaseFragment {
                         for (DocumentSnapshot doc : querySnapshot.getDocuments()) {
                             String type = doc.getString("type");
 
-                            // Handle alliance accepted/declined AND message notifications
+                            // OVDE JE VAŽNO - alliance_message
                             if ("alliance_accepted".equals(type) ||
                                     "alliance_declined".equals(type) ||
                                     "alliance_message".equals(type)) {
@@ -239,6 +244,7 @@ public class NotificationsFragment extends BaseFragment {
                                     notification.setUsername(doc.getString("declinedUsername"));
                                     notification.setAllianceName(doc.getString("allianceName"));
                                 } else if ("alliance_message".equals(type)) {
+                                    // OVO JE ZA PORUKE!
                                     notification.setSenderUsername(doc.getString("senderUsername"));
                                     notification.setMessageText(doc.getString("messageText"));
                                     notification.setAllianceId(doc.getString("allianceId"));
@@ -260,7 +266,6 @@ public class NotificationsFragment extends BaseFragment {
                             }
                         }
 
-                        // Sort by timestamp (newest first)
                         allianceNotificationList.sort((n1, n2) ->
                                 Long.compare(n2.getTimestamp(), n1.getTimestamp()));
 
@@ -269,7 +274,6 @@ public class NotificationsFragment extends BaseFragment {
                     }
                 });
     }
-
     private void handleDismissNotification(AllianceNotification notification) {
         FirebaseFirestore.getInstance()
                 .collection("notifications")
