@@ -59,6 +59,8 @@ dependencies {
     implementation 'com.google.android.material:material:1.12.0'
     implementation 'com.github.Dhaval2404:ColorPicker:2.3'
 
+    implementation 'com.github.prolificinteractive:material-calendarview:2.0.1'
+
 
 
     // ZXing za QR kod

@@ -66,6 +66,8 @@
             android:theme="@style/Theme.BossApp"
             android:windowSoftInputMode="adjustResize"/>
 
+        <activity android:name=".presentation.task.TaskCalendarActivity"/>
+
 
     </application>
 
