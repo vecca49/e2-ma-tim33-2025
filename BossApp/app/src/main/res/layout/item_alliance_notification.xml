@@ -5,64 +5,80 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_margin="8dp"
-    app:cardCornerRadius="12dp"
+    app:cardCornerRadius="8dp"
     app:cardElevation="2dp"
     app:cardBackgroundColor="@color/surface">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="16dp">
+        android:orientation="horizontal"
+        android:padding="12dp">
 
         <ImageView
-            android:id="@+id/ivIcon"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            android:id="@+id/ivNotificationIcon"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:src="@drawable/ic_alliance"
-            android:padding="8dp"
-            android:contentDescription="Notification icon"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"/>
+            android:layout_marginEnd="12dp"
+            android:contentDescription="Notification icon"/>
 
-        <TextView
-            android:id="@+id/tvMessage"
+        <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="Harry Potter accepted your invitation to Piksi"
-            android:textSize="16sp"
-            android:textColor="@color/text_primary"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="8dp"
-            app:layout_constraintStart_toEndOf="@id/ivIcon"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="@id/ivIcon"/>
+            android:layout_weight="1"
+            android:orientation="vertical">
 
-        <TextView
-            android:id="@+id/tvTimestamp"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:text="Jan 01, 2025"
-            android:textSize="12sp"
-            android:textColor="@color/text_hint"
-            android:layout_marginTop="4dp"
-            app:layout_constraintStart_toStartOf="@id/tvMessage"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tvMessage"/>
+            <TextView
+                android:id="@+id/tvNotificationMessage"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Notification message"
+                android:textSize="14sp"
+                android:textColor="@color/text_primary"
+                android:layout_marginBottom="4dp"/>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnDismiss"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:text="Dismiss"
-            android:textSize="14sp"
-            android:layout_marginTop="12dp"
-            android:minHeight="48dp"
-            app:cornerRadius="8dp"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/ivIcon"/>
+            <TextView
+                android:id="@+id/tvNotificationTimestamp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="2 hours ago"
+                android:textSize="12sp"
+                android:textColor="@color/text_secondary"
+                android:layout_marginBottom="8dp"/>
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnNotificationAction"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:text="Open Chat"
+                    android:textSize="12sp"
+                    android:visibility="gone"
+                    android:layout_marginEnd="8dp"
+                    app:cornerRadius="4dp"
+                    style="@style/Widget.Material3.Button.TonalButton"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnDismiss"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:minHeight="48dp"
+                    android:text="Dismiss"
+                    android:textSize="12sp"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    app:cornerRadius="4dp"
+                    style="@style/Widget.Material3.Button.OutlinedButton"/>
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </LinearLayout>
 
 </com.google.android.material.card.MaterialCardView>
