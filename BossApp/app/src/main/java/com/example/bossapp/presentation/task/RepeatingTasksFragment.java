@@ -38,7 +38,7 @@ public class RepeatingTasksFragment extends Fragment {
         return v;
     }
 
-    private void loadTasks() {
+    public void loadTasks() {
         taskManager.getUserTasks(userId, new TaskManager.OnTasksLoadListener() {
             @Override
             public void onSuccess(List<Task> loadedTasks) {

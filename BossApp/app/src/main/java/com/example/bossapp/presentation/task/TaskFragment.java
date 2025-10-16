@@ -3,12 +3,18 @@ package com.example.bossapp.presentation.task;
 import android.app.AlertDialog;
 import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.*;
+
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -30,9 +36,7 @@ import java.util.List;
 
 public class TaskFragment extends Fragment {
 
-    private RecyclerView recyclerView;
     private FloatingActionButton fabAdd;
-    private TaskAdapter taskAdapter;
     private TaskManager taskManager;
     private CategoryManager categoryManager;
     private String userId;
@@ -47,6 +51,12 @@ public class TaskFragment extends Fragment {
                              Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_task, container, false);
 
+        taskManager = new TaskManager();
+        categoryManager = new CategoryManager();
+        userId = FirebaseAuth.getInstance().getUid();
+
+        loadCategories();
+        refreshTasks();
         TabLayout tabLayout = v.findViewById(R.id.tabLayout);
         ViewPager2 viewPager = v.findViewById(R.id.viewPager);
         fabAdd = v.findViewById(R.id.fabAddTask);
@@ -80,21 +90,8 @@ public class TaskFragment extends Fragment {
     }
 
 
-    private void loadTasks() {
-        taskManager.getUserTasks(userId, new TaskManager.OnTasksLoadListener() {
-            @Override
-            public void onSuccess(List<Task> loadedTasks) {
-                tasks.clear();
-                tasks.addAll(loadedTasks);
-                taskAdapter.notifyDataSetChanged();
-            }
 
-            @Override
-            public void onError(String message) {
-                Toast.makeText(getContext(), "Error loading tasks: " + message, Toast.LENGTH_SHORT).show();
-            }
-        });
-    }
+
 
     private void loadCategories() {
         categoryManager.loadUserCategories(userId, new CategoryManager.OnCategoriesLoadListener() {
@@ -107,6 +104,7 @@ public class TaskFragment extends Fragment {
                     categories.addAll(loadedCategories);
                 }
             }
+
 
             @Override
             public void onError(Exception e) {
@@ -213,8 +211,7 @@ public class TaskFragment extends Fragment {
                 @Override
                 public void onSuccess() {
                     Toast.makeText(getContext(), "Task created successfully", Toast.LENGTH_SHORT).show();
-                    loadTasks();
-                }
+                    refreshTasks();                }
 
                 @Override
                 public void onError(String message) {
@@ -249,6 +246,18 @@ public class TaskFragment extends Fragment {
         datePicker.show();
     }
 
+    public void refreshTasks() {
+        List<Fragment> fragments = getChildFragmentManager().getFragments();
+        for (Fragment fragment : fragments) {
+            if (fragment instanceof OneTimeTasksFragment) {
+                ((OneTimeTasksFragment) fragment).loadTasks();
+            } else if (fragment instanceof RepeatingTasksFragment) {
+                ((RepeatingTasksFragment) fragment).loadTasks();
+            }
+        }
+    }
+
+
     private void pickDate(Timestamp[] result) {
         Calendar calendar = Calendar.getInstance();
         DatePickerDialog datePicker = new DatePickerDialog(getContext(),
@@ -261,4 +270,32 @@ public class TaskFragment extends Fragment {
                 calendar.get(Calendar.DAY_OF_MONTH));
         datePicker.show();
     }
+
+    private ActivityResultLauncher<Intent> taskDetailLauncher;
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        taskManager = new TaskManager();
+        categoryManager = new CategoryManager();
+        userId = FirebaseAuth.getInstance().getUid();
+
+        // Launcher za TaskDetailActivity
+        taskDetailLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == AppCompatActivity.RESULT_OK) {
+                        refreshTasks(); // 🔹 Osvježava liste nakon promjene
+                    }
+                });
+    }
+
+    public void openTaskDetail(String taskId) {
+        Intent intent = new Intent(getContext(), TaskDetailActivity.class);
+        intent.putExtra("taskId", taskId);
+        taskDetailLauncher.launch(intent);
+    }
+
+
 }

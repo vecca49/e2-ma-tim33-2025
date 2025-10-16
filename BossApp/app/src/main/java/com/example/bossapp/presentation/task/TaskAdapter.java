@@ -2,11 +2,13 @@ package com.example.bossapp.presentation.task;
 
 import android.app.AlertDialog;
 import android.content.Context;
+import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.content.Intent;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -65,10 +67,8 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
             else
                 tvDate.setText("Repeating task");
 
-            // 👉 Klik - prikaz detalja o zadatku
             itemView.setOnClickListener(v -> showTaskDetails(v.getContext(), task));
 
-            // 👉 Dugi klik - promjena statusa
             itemView.setOnLongClickListener(v -> {
                 showStatusDialog(v.getContext(), task);
                 return true;
@@ -86,8 +86,16 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
                     .setTitle(task.getName())
                     .setMessage(details)
                     .setPositiveButton("OK", null)
+                    .setNegativeButton("Promeni status", (dialog, which) -> showStatusDialog(context, task))
+                    .setNeutralButton("Change", (dialog, which) -> {
+                        Intent intent = new Intent(context.getApplicationContext(), TaskDetailActivity.class);
+                        intent.putExtra("taskId", task.getId());
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); // 🔹 neophodno
+                        context.getApplicationContext().startActivity(intent);
+                    })
                     .show();
         }
+
 
         private void showStatusDialog(Context context, Task task) {
             String[] statuses = {"Aktivno", "Pauzirano", "Urađeno", "Otkazano"};

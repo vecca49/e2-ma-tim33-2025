@@ -61,6 +61,12 @@
             android:screenOrientation="portrait"
             android:theme="@style/Theme.BossApp" />
 
+        <activity
+            android:name=".presentation.task.TaskDetailActivity"
+            android:theme="@style/Theme.BossApp"
+            android:windowSoftInputMode="adjustResize"/>
+
+
     </application>
 
 </manifest>

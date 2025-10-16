@@ -25,6 +25,11 @@ public class TaskManager {
         void onError(String message);
     }
 
+    public interface OnTaskLoadListener {
+        void onSuccess(Task task);
+        void onError(String message);
+    }
+
     public void createOrUpdateTask(Task task, OnTaskOperationListener listener) {
         try {
             int totalXp = task.getDifficulty().getXp() + task.getImportance().getXp();
@@ -60,6 +65,21 @@ public class TaskManager {
         } catch (Exception e) {
             listener.onError("Error saving task: " + e.getMessage());
         }
+    }
+
+    // 🔸 Dohvatanje taska po ID-u
+    public void getTaskById(String taskId, OnTaskLoadListener listener) {
+        taskRepository.getTaskById(taskId, new TaskRepository.OnTaskLoadListener() {
+            @Override
+            public void onSuccess(Task task) {
+                listener.onSuccess(task);
+            }
+
+            @Override
+            public void onError(Exception e) {
+                listener.onError(e.getMessage());
+            }
+        });
     }
 
     public void getUserTasks(String userId, OnTasksLoadListener listener) {
@@ -127,5 +147,70 @@ public class TaskManager {
             });
         }
     }
-}
 
+    public void updateTask(Task task, OnTaskOperationListener listener) {
+        taskRepository.saveTask(task, new TaskRepository.OnTaskSaveListener() {
+            @Override
+            public void onSuccess() {
+                listener.onSuccess();
+            }
+
+            @Override
+            public void onError(Exception e) {
+                listener.onError(e.getMessage());
+            }
+        });
+    }
+
+
+    public void editTask(Task task, String newName, String newDescription,
+                         Timestamp newExecutionTime, Task.Difficulty newDifficulty,
+                         Task.Importance newImportance,
+                         OnTaskOperationListener listener) {
+
+        if (task.getStatus() == Task.TaskStatus.DONE ||
+                task.getStatus() == Task.TaskStatus.NOT_DONE ||
+                task.getStatus() == Task.TaskStatus.CANCELED) {
+            listener.onError("Ne možete menjati završene ili otkazane zadatke.");
+            return;
+        }
+
+        Timestamp now = Timestamp.now();
+        if (task.isRepeating() && task.getExecutionTime() != null &&
+                task.getExecutionTime().compareTo(now) < 0) {
+            listener.onError("Ne možete menjati prethodna ponavljanja zadatka.");
+            return;
+        }
+
+        if (newName != null) task.setName(newName);
+        if (newDescription != null) task.setDescription(newDescription);
+        if (newExecutionTime != null) task.setExecutionTime(newExecutionTime);
+        if (newDifficulty != null) task.setDifficulty(newDifficulty);
+        if (newImportance != null) task.setImportance(newImportance);
+
+        int totalXp = task.getDifficulty().getXp() + task.getImportance().getXp();
+        task.setTotalXP(totalXp);
+
+        updateTask(task, listener);
+    }
+
+
+    public void deleteTaskSafe(Task task, OnTaskOperationListener listener) {
+        if (task.getStatus() == Task.TaskStatus.DONE ||
+                task.getStatus() == Task.TaskStatus.NOT_DONE) {
+            listener.onError("Ne možete brisati završene zadatke.");
+            return;
+        }
+
+        if (task.isRepeating()) {
+            Timestamp now = Timestamp.now();
+            if (task.getExecutionTime() != null && task.getExecutionTime().compareTo(now) < 0) {
+                listener.onError("Ne možete brisati prethodna ponavljanja zadatka.");
+                return;
+            }
+        }
+
+        deleteTask(task.getId(), listener);
+    }
+
+}
