@@ -57,7 +57,6 @@ public class RegisterActivity extends AppCompatActivity {
     }
 
     private void setupAvatarSelection() {
-        // 5 predefinisanih avatara
         int[] avatarResources = {
                 R.drawable.avatar,
                 R.drawable.bow,

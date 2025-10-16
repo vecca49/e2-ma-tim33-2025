@@ -4,8 +4,6 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -44,6 +42,7 @@ public class AllianceFragment extends BaseFragment {
     private TextView tvLeaderName;
     private TextView tvMemberCount;
     private RecyclerView rvMembers;
+    private MaterialButton btnOpenChat;
     private MaterialButton btnInviteFriends;
     private MaterialButton btnLeaveAlliance;
     private MaterialButton btnDisbandAlliance;
@@ -90,6 +89,7 @@ public class AllianceFragment extends BaseFragment {
         tvLeaderName = view.findViewById(R.id.tvLeaderName);
         tvMemberCount = view.findViewById(R.id.tvMemberCount);
         rvMembers = view.findViewById(R.id.rvMembers);
+        btnOpenChat = view.findViewById(R.id.btnOpenChat);
         btnInviteFriends = view.findViewById(R.id.btnInviteFriends);
         btnLeaveAlliance = view.findViewById(R.id.btnLeaveAlliance);
         btnDisbandAlliance = view.findViewById(R.id.btnDisbandAlliance);
@@ -97,6 +97,7 @@ public class AllianceFragment extends BaseFragment {
 
     private void setupButtons() {
         btnCreateAlliance.setOnClickListener(v -> showCreateAllianceDialog());
+        btnOpenChat.setOnClickListener(v -> openAllianceChat());
         btnInviteFriends.setOnClickListener(v -> openInviteFriendsScreen());
         btnLeaveAlliance.setOnClickListener(v -> showLeaveAllianceDialog());
         btnDisbandAlliance.setOnClickListener(v -> showDisbandAllianceDialog());
@@ -178,7 +179,7 @@ public class AllianceFragment extends BaseFragment {
                     public void onViewProfile(User user) {
                         // Open profile - implement if needed
                     }
-                }, false); // Don't show action buttons
+                }, false);
 
         LinearLayoutManager layoutManager = new LinearLayoutManager(
                 requireContext(), LinearLayoutManager.HORIZONTAL, false);
@@ -240,6 +241,20 @@ public class AllianceFragment extends BaseFragment {
                 });
     }
 
+    private void openAllianceChat() {
+        if (currentAlliance == null) return;
+
+        AllianceChatFragment chatFragment = AllianceChatFragment.newInstance(
+                currentAlliance.getAllianceId(),
+                currentAlliance.getAllianceName());
+
+        requireActivity().getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.fragmentContainer, chatFragment)
+                .addToBackStack(null)
+                .commit();
+    }
+
     private void openInviteFriendsScreen() {
         if (currentAlliance == null) return;
 
@@ -257,7 +272,6 @@ public class AllianceFragment extends BaseFragment {
     private void showLeaveAllianceDialog() {
         if (currentAlliance == null) return;
 
-        // First check if there's an active mission
         if (currentAlliance.getCurrentMissionId() != null &&
                 !currentAlliance.getCurrentMissionId().isEmpty()) {
             Toast.makeText(requireContext(),
