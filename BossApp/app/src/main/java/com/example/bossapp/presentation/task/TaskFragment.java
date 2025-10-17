@@ -86,6 +86,13 @@ public class TaskFragment extends Fragment {
         });
 
         fabAdd.setOnClickListener(view -> showAddTaskDialog());
+
+        FloatingActionButton fabCalendar = v.findViewById(R.id.fabCalendar);
+        fabCalendar.setOnClickListener(view -> {
+            Intent intent = new Intent(getContext(), TaskCalendarActivity.class);
+            startActivity(intent);
+        });
+
         return v;
     }
 
