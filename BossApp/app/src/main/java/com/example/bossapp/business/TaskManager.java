@@ -133,20 +133,25 @@ public class TaskManager {
     }
 
     public void checkIfTaskExpired(Task task) {
+        if (task.getExecutionTime() == null || task.getStatus() != Task.TaskStatus.ACTIVE) return;
+
         Timestamp now = Timestamp.now();
-        if (task.getExecutionTime() != null && task.getExecutionTime().compareTo(now) < 0 &&
-                task.getStatus() == Task.TaskStatus.ACTIVE) {
+        long diffMillis = now.toDate().getTime() - task.getExecutionTime().toDate().getTime();
+        long daysDiff = diffMillis / (1000 * 60 * 60 * 24);
+
+        if (daysDiff > 3) {
             task.setStatus(Task.TaskStatus.NOT_DONE);
             taskRepository.saveTask(task, new TaskRepository.OnTaskSaveListener() {
                 @Override public void onSuccess() {
-                    Log.d(TAG, "Task marked as NOT_DONE automatically");
+                    Log.d(TAG, "Task older than 3 days -> marked as NOT_DONE");
                 }
                 @Override public void onError(Exception e) {
-                    Log.e(TAG, "Failed to update task status", e);
+                    Log.e(TAG, "Failed to auto-update task status", e);
                 }
             });
         }
     }
+
 
     public void updateTask(Task task, OnTaskOperationListener listener) {
         taskRepository.saveTask(task, new TaskRepository.OnTaskSaveListener() {

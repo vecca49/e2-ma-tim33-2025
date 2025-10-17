@@ -183,5 +183,10 @@ public class Task {
 
     public String getOwnerId() { return ownerId; }
     public void setOwnerId(String ownerId) { this.ownerId = ownerId; }
+
+    public boolean canChangeStatus() {
+        return status == TaskStatus.ACTIVE || status == TaskStatus.PAUSED;
+    }
+
 }
 

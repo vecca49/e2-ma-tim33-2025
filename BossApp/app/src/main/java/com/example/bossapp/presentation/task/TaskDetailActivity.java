@@ -47,7 +47,6 @@ public class TaskDetailActivity extends AppCompatActivity {
         btnSave = findViewById(R.id.btnSaveChanges);
         btnDelete = findViewById(R.id.btnDeleteTask);
 
-        // Postavljanje Spinnera
         spDifficulty.setAdapter(new ArrayAdapter<>(this,
                 android.R.layout.simple_spinner_item,
                 Task.Difficulty.values()));

@@ -8,7 +8,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.content.Intent;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -16,8 +15,10 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.bossapp.R;
 import com.example.bossapp.business.TaskManager;
 import com.example.bossapp.data.model.Task;
+import com.google.firebase.Timestamp;
 
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
 
@@ -65,14 +66,24 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
             if (task.getExecutionTime() != null)
                 tvDate.setText(sdf.format(task.getExecutionTime().toDate()));
             else
-                tvDate.setText("Repeating task");
+                tvDate.setText("Ponavljajući zadatak");
 
-            itemView.setOnClickListener(v -> showTaskDetails(v.getContext(), task));
+            itemView.setOnClickListener(v -> {
+                if (task.getId() != null) {
+                    Intent intent = new Intent(v.getContext(), TaskInfoActivity.class);
+                    intent.putExtra("TASK_ID", task.getId());
+                    v.getContext().startActivity(intent);
+                } else {
+                    Toast.makeText(v.getContext(), "Zadatak nema ID!", Toast.LENGTH_SHORT).show();
+                }
+            });
 
             itemView.setOnLongClickListener(v -> {
-                showStatusDialog(v.getContext(), task);
+                handleTaskStatusChange(v.getContext(), task);
                 return true;
             });
+
+
         }
 
         private void showTaskDetails(Context context, Task task) {
@@ -86,34 +97,64 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
                     .setTitle(task.getName())
                     .setMessage(details)
                     .setPositiveButton("OK", null)
-                    .setNegativeButton("Promeni status", (dialog, which) -> showStatusDialog(context, task))
-                    .setNeutralButton("Change", (dialog, which) -> {
+                    .setNegativeButton("Promijeni status", (dialog, which) -> handleTaskStatusChange(context, task))
+                    .setNeutralButton("Uredi", (dialog, which) -> {
                         Intent intent = new Intent(context.getApplicationContext(), TaskDetailActivity.class);
                         intent.putExtra("taskId", task.getId());
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); // 🔹 neophodno
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                         context.getApplicationContext().startActivity(intent);
                     })
                     .show();
         }
 
+        private void handleTaskStatusChange(Context context, Task task) {
+            if (task.getStatus() == Task.TaskStatus.DONE ||
+                    task.getStatus() == Task.TaskStatus.CANCELED ||
+                    task.getStatus() == Task.TaskStatus.NOT_DONE) {
+                Toast.makeText(context, "Ovaj zadatak se više ne može menjati.", Toast.LENGTH_SHORT).show();
+                return;
+            }
 
-        private void showStatusDialog(Context context, Task task) {
-            String[] statuses = {"Aktivno", "Pauzirano", "Urađeno", "Otkazano"};
+            if (task.getExecutionTime() != null && isOlderThanThreeDays(task.getExecutionTime())) {
+                taskManager.updateTaskStatus(task, Task.TaskStatus.NOT_DONE, new TaskManager.OnTaskOperationListener() {
+                    @Override
+                    public void onSuccess() {
+                        task.setStatus(Task.TaskStatus.NOT_DONE);
+                        notifyItemChanged(getAdapterPosition());
+                        Toast.makeText(context, "Zadatak automatski označen kao neurađen.", Toast.LENGTH_SHORT).show();
+                    }
+
+                    @Override
+                    public void onError(String message) {
+                        Toast.makeText(context, "Greška: " + message, Toast.LENGTH_SHORT).show();
+                    }
+                });
+                return;
+            }
+
+            String[] statuses;
+            if (task.isRepeating()) {
+                statuses = new String[]{"Aktivan", "Pauziran", "Urađen", "Otkazan"};
+            } else {
+                statuses = new String[]{"Aktivan", "Urađen", "Otkazan"};
+            }
+
             new AlertDialog.Builder(context)
                     .setTitle("Promijeni status zadatka")
                     .setItems(statuses, (dialog, which) -> {
                         Task.TaskStatus newStatus = null;
-                        switch (which) {
-                            case 0:
+
+                        switch (statuses[which]) {
+                            case "Aktivan":
                                 newStatus = Task.TaskStatus.ACTIVE;
                                 break;
-                            case 1:
+                            case "Pauziran":
                                 newStatus = Task.TaskStatus.PAUSED;
                                 break;
-                            case 2:
+                            case "Urađen":
                                 newStatus = Task.TaskStatus.DONE;
                                 break;
-                            case 3:
+                            case "Otkazan":
                                 newStatus = Task.TaskStatus.CANCELED;
                                 break;
                         }
@@ -125,18 +166,24 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
                                 public void onSuccess() {
                                     task.setStatus(finalStatus);
                                     notifyItemChanged(getAdapterPosition());
-                                    Toast.makeText(context, "Status updated", Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(context, "Status ažuriran: " + finalStatus.name(), Toast.LENGTH_SHORT).show();
                                 }
 
                                 @Override
                                 public void onError(String message) {
-                                    Toast.makeText(context, "Error: " + message, Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(context, "Greška: " + message, Toast.LENGTH_SHORT).show();
                                 }
                             });
                         }
                     })
                     .setNegativeButton("Otkaži", null)
                     .show();
+        }
+
+        private boolean isOlderThanThreeDays(Timestamp timestamp) {
+            Calendar limit = Calendar.getInstance();
+            limit.add(Calendar.DAY_OF_YEAR, -3);
+            return timestamp.toDate().before(limit.getTime());
         }
     }
 }

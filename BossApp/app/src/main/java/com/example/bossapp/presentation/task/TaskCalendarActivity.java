@@ -1,5 +1,6 @@
 package com.example.bossapp.presentation.task;
 
+import android.graphics.Color;
 import android.os.Bundle;
 import android.widget.Toast;
 
@@ -10,6 +11,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.bossapp.R;
 import com.example.bossapp.business.TaskManager;
+import com.example.bossapp.data.model.EventDecorator;
 import com.example.bossapp.data.model.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.prolificinteractive.materialcalendarview.CalendarDay;
@@ -17,10 +19,7 @@ import com.prolificinteractive.materialcalendarview.MaterialCalendarView;
 
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 
 public class TaskCalendarActivity extends AppCompatActivity {
 
@@ -46,12 +45,12 @@ public class TaskCalendarActivity extends AppCompatActivity {
 
         calendarView = findViewById(R.id.calendarView);
 
+        // Učitaj sve zadatke korisnika
         taskManager.getUserTasks(userId, new TaskManager.OnTasksLoadListener() {
             @Override
             public void onSuccess(List<Task> loadedTasks) {
                 tasks.clear();
                 tasks.addAll(loadedTasks);
-
                 markTasksInCalendar(loadedTasks);
             }
 
@@ -61,50 +60,48 @@ public class TaskCalendarActivity extends AppCompatActivity {
             }
         });
 
+        // Listener za klik na datum u kalendaru
         calendarView.setOnDateChangedListener((widget, date, selected) -> {
             List<Task> selectedTasks = new ArrayList<>();
             for (Task task : tasks) {
                 if (task.getExecutionTime() != null) {
                     Calendar cal = Calendar.getInstance();
                     cal.setTime(task.getExecutionTime().toDate());
+                    // ⚠ Dodaj +1 za mjesec jer Calendar.MONTH ide od 0 do 11
                     if (cal.get(Calendar.YEAR) == date.getYear() &&
-                            cal.get(Calendar.MONTH) == date.getMonth() &&
+                            (cal.get(Calendar.MONTH) + 1) == date.getMonth() &&
                             cal.get(Calendar.DAY_OF_MONTH) == date.getDay()) {
                         selectedTasks.add(task);
                     }
                 }
             }
-
             adapter = new TaskAdapter(selectedTasks);
             rvTasks.setAdapter(adapter);
         });
     }
 
+    // Označi datume zadataka u kalendaru
     private void markTasksInCalendar(List<Task> loadedTasks) {
-        Map<String, HashSet<CalendarDay>> colorDates = new HashMap<>();
-
         for (Task task : loadedTasks) {
-            if (task.getExecutionTime() != null && task.getCategoryColor() != null) {
+            if (task.getExecutionTime() != null) {
                 Calendar cal = Calendar.getInstance();
                 cal.setTime(task.getExecutionTime().toDate());
 
+                // ⚠ Dodaj +1 za mjesec
                 CalendarDay day = CalendarDay.from(
                         cal.get(Calendar.YEAR),
                         cal.get(Calendar.MONTH) + 1,
                         cal.get(Calendar.DAY_OF_MONTH)
                 );
 
-                colorDates.putIfAbsent(task.getCategoryColor(), new HashSet<>());
-                colorDates.get(task.getCategoryColor()).add(day);
-            }
-        }
+                int color;
+                try {
+                    color = Color.parseColor(task.getCategoryColor());
+                } catch (IllegalArgumentException e) {
+                    color = Color.GRAY; // default boja ako nije ispravan HEX
+                }
 
-        for (Map.Entry<String, HashSet<CalendarDay>> entry : colorDates.entrySet()) {
-            try {
-                int color = android.graphics.Color.parseColor(entry.getKey());
-                calendarView.addDecorator(new TaskDayDecorator(entry.getValue(), color));
-            } catch (IllegalArgumentException e) {
-                calendarView.addDecorator(new TaskDayDecorator(entry.getValue(), android.graphics.Color.GRAY));
+                calendarView.addDecorator(new EventDecorator(color, day));
             }
         }
     }
