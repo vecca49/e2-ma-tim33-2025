@@ -7,10 +7,21 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+
+
 public class CategoryManager {
 
     private final CategoryRepository repository;
     private final Set<String> usedColors = new HashSet<>();
+    private OnCategoryColorChangeListener uiListener;
+
+    public interface OnCategoryColorChangeListener {
+        void onCategoryColorChanged(Category category);
+    }
+
+    public void setCategoryColorChangeListener(OnCategoryColorChangeListener listener) {
+        this.uiListener = listener;
+    }
 
     public CategoryManager() {
         this.repository = new CategoryRepository();
@@ -35,7 +46,8 @@ public class CategoryManager {
         usedColors.add(category.getColorHex());
     }
 
-    public void changeCategoryColor(Category category, String newColorHex, CategoryRepository.OnCategoryActionListener listener) {
+    public void changeCategoryColor(Category category, String newColorHex,
+                                    CategoryRepository.OnCategoryActionListener listener) {
         if (usedColors.contains(newColorHex)) {
             listener.onError(new Exception("Boja je već zauzeta!"));
             return;
@@ -47,6 +59,11 @@ public class CategoryManager {
                 category.setColorHex(newColorHex);
                 usedColors.add(newColorHex);
                 listener.onSuccess();
+
+                if (uiListener != null) {
+                    uiListener.onCategoryColorChanged(category);
+                }
+
             }
 
             @Override
@@ -55,6 +72,7 @@ public class CategoryManager {
             }
         });
     }
+
 
     public void loadUserCategories(String userId, OnCategoriesLoadListener listener) {
         repository.getCategoriesForUser(userId, new CategoryRepository.OnGetCategoriesListener() {
@@ -70,6 +88,9 @@ public class CategoryManager {
         });
     }
 
+    public interface OnCategoryColorChangedListener {
+        void onCategoryColorChanged(Category category);
+    }
 
 
 }
