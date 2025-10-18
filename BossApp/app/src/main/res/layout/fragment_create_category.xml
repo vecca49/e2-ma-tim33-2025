@@ -6,7 +6,6 @@
     android:layout_height="match_parent"
     android:background="#F5F5F5">
 
-    <!-- RecyclerView unutar padding kontejnera -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_categories"
         android:layout_width="match_parent"
@@ -16,7 +15,6 @@
         android:scrollbars="vertical"
         app:layout_behavior="@string/appbar_scrolling_view_behavior" />
 
-    <!-- FloatingActionButton sa shadow i modernim izgledom -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fab_add_category"
         android:layout_width="wrap_content"

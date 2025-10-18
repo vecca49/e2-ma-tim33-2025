@@ -27,6 +27,8 @@ public class Task {
     private TaskStatus status;
     private String ownerId;
 
+    private boolean xpAwarded = false;
+
     public Task() {}
 
     public Task(String name,
@@ -186,6 +188,14 @@ public class Task {
 
     public boolean canChangeStatus() {
         return status == TaskStatus.ACTIVE || status == TaskStatus.PAUSED;
+    }
+
+    public boolean isXpAwarded() {
+        return xpAwarded;
+    }
+
+    public void setXpAwarded(boolean xpAwarded) {
+        this.xpAwarded = xpAwarded;
     }
 
 }
