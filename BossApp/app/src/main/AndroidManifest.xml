@@ -73,6 +73,15 @@
             android:theme="@style/Theme.BossApp"
             android:windowSoftInputMode="adjustResize"/>
 
+        <activity
+            android:name=".presentation.category.CategoryActivity"
+            android:exported="false"
+            android:label="Kategorije" />
+
+        <activity android:name=".presentation.boss.BossFightActivity"
+            android:exported="true" />
+
+
 
     </application>
 

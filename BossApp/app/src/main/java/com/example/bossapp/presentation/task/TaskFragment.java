@@ -25,6 +25,7 @@ import com.example.bossapp.business.CategoryManager;
 import com.example.bossapp.business.TaskManager;
 import com.example.bossapp.data.model.Category;
 import com.example.bossapp.data.model.Task;
+import com.example.bossapp.presentation.category.CategoryActivity;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.tabs.TabLayout;
 import com.google.firebase.Timestamp;
@@ -93,12 +94,14 @@ public class TaskFragment extends Fragment {
             startActivity(intent);
         });
 
+        FloatingActionButton fabCategories = v.findViewById(R.id.fabCategories);
+        fabCategories.setOnClickListener(view -> {
+            Intent intent = new Intent(getContext(), CategoryActivity.class);
+            startActivity(intent);
+        });
+
         return v;
     }
-
-
-
-
 
     private void loadCategories() {
         categoryManager.loadUserCategories(userId, new CategoryManager.OnCategoriesLoadListener() {
@@ -288,12 +291,11 @@ public class TaskFragment extends Fragment {
         categoryManager = new CategoryManager();
         userId = FirebaseAuth.getInstance().getUid();
 
-        // Launcher za TaskDetailActivity
         taskDetailLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
                     if (result.getResultCode() == AppCompatActivity.RESULT_OK) {
-                        refreshTasks(); // 🔹 Osvježava liste nakon promjene
+                        refreshTasks();
                     }
                 });
     }
