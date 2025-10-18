@@ -1,5 +1,6 @@
 package com.example.bossapp;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.MenuItem;
@@ -11,6 +12,7 @@ import androidx.core.view.WindowCompat;
 import androidx.fragment.app.Fragment;
 
 import com.example.bossapp.presentation.alliance.AllianceFragment;
+import com.example.bossapp.presentation.boss.BossFightActivity;
 import com.example.bossapp.presentation.home.HomeFragment;
 import com.example.bossapp.presentation.profile.ProfileFragment;
 import com.example.bossapp.presentation.statistics.StatisticsFragment;
@@ -74,9 +76,11 @@ public class MainActivity extends AppCompatActivity {
                     tag = "STATISTICS";
                 }
                 else if (itemId == R.id.nav_categories) {
-                    selectedFragment = new CreateCategoryFragment();
-                    tag = "CATEGORIES";
+                    Intent intent = new Intent(MainActivity.this, BossFightActivity.class);
+                    startActivity(intent);
+                    return true;
                 }
+
                 else if (itemId == R.id.nav_tasks) {
                     selectedFragment = new TaskFragment();
                     tag = "TASKS";
