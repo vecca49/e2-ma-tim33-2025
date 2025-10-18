@@ -45,6 +45,13 @@ public class CreateCategoryFragment extends Fragment {
 
         categoryManager = new CategoryManager();
 
+        categoryManager.setCategoryColorChangeListener(category -> {
+            if (getActivity() instanceof com.example.bossapp.presentation.task.TaskCalendarActivity) {
+                ((com.example.bossapp.presentation.task.TaskCalendarActivity) getActivity())
+                        .updateTaskColorsForCategory(category);
+            }
+        });
+
         recyclerView = view.findViewById(R.id.rv_categories);
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
         adapter = new CategoryAdapter(categories, requireContext(), (category, currentColor) -> {
@@ -74,7 +81,7 @@ public class CreateCategoryFragment extends Fragment {
                         for (var doc : querySnapshot.getDocuments()) {
                             Category category = doc.toObject(Category.class);
                             if (category != null) {
-                                category.setId(doc.getId()); // postavi ID dokumenta
+                                category.setId(doc.getId());
                                 categories.add(category);
                             }
                         }
@@ -190,12 +197,10 @@ public class CreateCategoryFragment extends Fragment {
         preview.setBackgroundColor(color);
 
         SeekBar.OnSeekBarChangeListener listener = new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+            @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 int newColor = Color.rgb(seekR.getProgress(), seekG.getProgress(), seekB.getProgress());
                 preview.setBackgroundColor(newColor);
             }
-
             @Override public void onStartTrackingTouch(SeekBar seekBar) {}
             @Override public void onStopTrackingTouch(SeekBar seekBar) {}
         };
@@ -218,18 +223,24 @@ public class CreateCategoryFragment extends Fragment {
                         }
                     }
 
-                    categoryManager.changeCategoryColor(category, newColorHex, new CategoryRepository.OnCategoryActionListener() {
-                        @Override
-                        public void onSuccess() {
-                            adapter.notifyDataSetChanged();
-                            Toast.makeText(requireContext(), "Boja uspešno promenjena!", Toast.LENGTH_SHORT).show();
-                        }
+                    categoryManager.changeCategoryColor(category, newColorHex,
+                            new CategoryRepository.OnCategoryActionListener() {
+                                @Override
+                                public void onSuccess() {
+                                    adapter.notifyDataSetChanged();
+                                    Toast.makeText(requireContext(), "Boja uspešno promenjena!", Toast.LENGTH_SHORT).show();
 
-                        @Override
-                        public void onError(Exception e) {
-                            Toast.makeText(requireContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
-                        }
-                    });
+                                    if (getActivity() instanceof com.example.bossapp.presentation.task.TaskCalendarActivity) {
+                                        ((com.example.bossapp.presentation.task.TaskCalendarActivity) getActivity())
+                                                .updateTaskColorsForCategory(category);
+                                    }
+                                }
+
+                                @Override
+                                public void onError(Exception e) {
+                                    Toast.makeText(requireContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
+                                }
+                            });
                 })
                 .setNegativeButton("Otkaži", null)
                 .show();

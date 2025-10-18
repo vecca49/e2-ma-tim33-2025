@@ -50,6 +50,13 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
         return tasks.size();
     }
 
+    public void updateTasks(List<Task> newTasks) {
+        this.tasks.clear();
+        this.tasks.addAll(newTasks);
+        notifyDataSetChanged();
+    }
+
+
     class TaskViewHolder extends RecyclerView.ViewHolder {
         TextView tvName, tvStatus, tvDate;
 
@@ -85,6 +92,8 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
 
 
         }
+
+
 
         private void showTaskDetails(Context context, Task task) {
             String details = "Opis: " + task.getDescription() + "\n"
