@@ -86,7 +86,10 @@
                             android:clickable="true"
                             android:focusable="true"
                             android:background="?attr/selectableItemBackground"
-                            android:padding="8dp"/>
+                            android:paddingHorizontal="12dp"
+                            android:paddingVertical="8dp"
+                            android:minHeight="48dp"
+                            android:minWidth="48dp"/>
 
                     </LinearLayout>
 

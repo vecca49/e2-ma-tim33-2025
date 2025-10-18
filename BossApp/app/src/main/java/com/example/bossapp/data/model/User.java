@@ -135,4 +135,35 @@ public class User {
     public boolean isFriend(String userId) {
         return friendIds != null && friendIds.contains(userId);
     }
+
+    public String getCurrentTitle() {
+        return getTitleForLevel(level);
+    }
+
+    /*public static String getTitleForLevel(int level) {
+        if (level == 0) return "Rookie";
+        if (level == 1) return "Novice Warrior";
+        if (level == 2) return "Skilled Fighter";
+        if (level == 3) return "Expert Guardian";
+        if (level == 4) return "Master Champion";
+        if (level == 5) return "Legendary Hero";
+        if (level == 6) return "Mythic Conqueror";
+        return "Supreme Legend";
+    }*/
+
+    public static String getTitleForLevel(int level) {
+        switch (level) {
+            case 0: return "Rookie";
+            case 1: return "Novice Warrior";
+            case 2: return "Skilled Fighter";
+            case 3: return "Expert Guardian";
+            case 4: return "Master Champion";
+            case 5: return "Legendary Hero";
+            case 6: return "Mythic Conqueror";
+            case 7: return "Supreme Legend";
+            case 8: return "Divine Protector";
+            case 9: return "Eternal Overlord";
+            default: return "Ultimate Boss " + (level - 9);
+        }
+    }
 }

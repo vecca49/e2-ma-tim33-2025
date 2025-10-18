@@ -19,6 +19,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.bossapp.R;
+import com.example.bossapp.business.LevelManager;
 import com.example.bossapp.business.QRCodeManager;
 import com.example.bossapp.data.model.User;
 import com.example.bossapp.data.repository.FriendRepository;
@@ -55,6 +56,7 @@ public class ProfileFragment extends BaseFragment {
     private boolean isOwnProfile;
     private User displayedUser;
     private User currentUser;
+    private MaterialButton btnLevelProgress;
 
     public static ProfileFragment newInstance(String userId) {
         ProfileFragment fragment = new ProfileFragment();
@@ -130,6 +132,7 @@ public class ProfileFragment extends BaseFragment {
         tvFriendsCount = view.findViewById(R.id.tvFriendsCount);
         tvSeeAllFriends = view.findViewById(R.id.tvSeeAllFriends);
         tvNoFriends = view.findViewById(R.id.tvNoFriends);
+        btnLevelProgress = view.findViewById(R.id.btnLevelProgress);
     }
 
     private void setupButtons() {
@@ -146,6 +149,14 @@ public class ProfileFragment extends BaseFragment {
         btnFriendAction.setOnClickListener(v -> handleFriendAction());
 
         tvSeeAllFriends.setOnClickListener(v -> openAllFriendsScreen());
+
+        btnLevelProgress.setOnClickListener(v -> {
+            requireActivity().getSupportFragmentManager()
+                    .beginTransaction()
+                    .replace(R.id.fragmentContainer, new com.example.bossapp.presentation.level.LevelProgressFragment())
+                    .addToBackStack(null)
+                    .commit();
+        });
     }
 
     private void setupFriendsWidget() {
@@ -329,11 +340,13 @@ public class ProfileFragment extends BaseFragment {
         tvTitle.setText(user.getTitle());
 
         if (isOwnProfile) {
-            tvPowerPoints.setText(String.valueOf(user.getPowerPoints()));
+            tvPowerPoints.setText(String.valueOf(user.getPp()));
         }
 
-        int nextLevelXP = calculateXPForNextLevel(user.getLevel());
-        tvExperiencePoints.setText(user.getExperiencePoints() + " / " + nextLevelXP);
+        // *** NOVO: Prikaži XP kao progress ***
+        int currentXP = user.getXp();
+        int requiredXP = LevelManager.calculateXPForLevel(user.getLevel() + 1);
+        tvExperiencePoints.setText(currentXP + " / " + requiredXP);
 
         if (isOwnProfile) {
             tvCoins.setText(String.valueOf(user.getCoins()));

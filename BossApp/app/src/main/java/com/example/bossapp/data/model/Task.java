@@ -84,6 +84,7 @@ public class Task {
         map.put("totalXP", totalXP);
         map.put("status", status != null ? status.name() : null);
         map.put("ownerId", ownerId);
+        map.put("xpAwarded", xpAwarded);
         return map;
     }
 
