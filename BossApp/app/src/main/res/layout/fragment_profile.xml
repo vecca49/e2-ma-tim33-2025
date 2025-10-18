@@ -315,7 +315,10 @@
                             android:clickable="true"
                             android:focusable="true"
                             android:background="?attr/selectableItemBackground"
-                            android:padding="8dp"/>
+                            android:paddingHorizontal="12dp"
+                            android:paddingVertical="8dp"
+                            android:minHeight="48dp"
+                            android:minWidth="48dp"/>
 
                     </LinearLayout>
 
@@ -386,6 +389,21 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"/>
 
+            <!-- Level Progress Button - ISPRAVLJENO! -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnLevelProgress"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_marginTop="12dp"
+                android:text="View Level Progress"
+                android:textSize="16sp"
+                app:icon="@drawable/ic_level"
+                app:iconGravity="start"
+                app:cornerRadius="8dp"
+                app:layout_constraintTop_toBottomOf="@id/btnScanQR"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"/>
+
             <!-- QR Code Card -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/cardQR"
@@ -395,7 +413,7 @@
                 app:cardCornerRadius="12dp"
                 app:cardElevation="2dp"
                 app:cardBackgroundColor="@color/surface"
-                app:layout_constraintTop_toBottomOf="@id/btnScanQR"
+                app:layout_constraintTop_toBottomOf="@id/btnLevelProgress"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintEnd_toEndOf="parent">
 
