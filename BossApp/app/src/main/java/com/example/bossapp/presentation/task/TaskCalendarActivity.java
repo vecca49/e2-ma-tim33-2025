@@ -20,7 +20,9 @@ import com.prolificinteractive.materialcalendarview.MaterialCalendarView;
 
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class TaskCalendarActivity extends AppCompatActivity {
 
@@ -95,6 +97,9 @@ public class TaskCalendarActivity extends AppCompatActivity {
 
     private void markTasksInCalendar(List<Task> loadedTasks) {
         calendarView.removeDecorators();
+
+        Map<CalendarDay, Integer> dayColorMap = new HashMap<>();
+
         for (Task task : loadedTasks) {
             if (task.getExecutionTime() != null) {
                 Calendar cal = Calendar.getInstance();
@@ -102,7 +107,7 @@ public class TaskCalendarActivity extends AppCompatActivity {
 
                 CalendarDay day = CalendarDay.from(
                         cal.get(Calendar.YEAR),
-                        (cal.get(Calendar.MONTH)+1),
+                        cal.get(Calendar.MONTH) + 1,
                         cal.get(Calendar.DAY_OF_MONTH)
                 );
 
@@ -113,10 +118,17 @@ public class TaskCalendarActivity extends AppCompatActivity {
                     color = Color.GRAY;
                 }
 
-                calendarView.addDecorator(new EventDecorator(color, day));
+
+                dayColorMap.putIfAbsent(day, color);
             }
+        }
+
+        for (Map.Entry<CalendarDay, Integer> entry : dayColorMap.entrySet()) {
+            calendarView.addDecorator(new EventDecorator(entry.getValue(), entry.getKey()));
         }
     }
 
 }
+
+
 
