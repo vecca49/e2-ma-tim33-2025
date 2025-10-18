@@ -38,8 +38,9 @@ public class LevelManager {
         for (int i = 2; i <= targetLevel; i++) {
             // Formula: XP * 2 + XP / 2 = XP * 2.5
             double calculated = previousXP * 2.5;
+            previousXP = (int) calculated;
             // Zaokruži na prvu narednu stotinu
-            previousXP = (int) (Math.ceil(calculated / 100.0) * 100);
+            //previousXP = (int) (Math.ceil(calculated / 100.0) * 100);
         }
 
         return previousXP;
