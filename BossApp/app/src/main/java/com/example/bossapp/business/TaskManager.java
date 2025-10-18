@@ -70,7 +70,6 @@ public class TaskManager {
         }
     }
 
-    // 🔸 Dohvatanje taska po ID-u
     public void getTaskById(String taskId, OnTaskLoadListener listener) {
         taskRepository.getTaskById(taskId, new TaskRepository.OnTaskLoadListener() {
             @Override
@@ -188,23 +187,19 @@ public class TaskManager {
                                 t.getImportance() == Task.Importance.VERY_IMPORTANT) hardVeryImportantCount++;
                     }
 
-                    // Nedeljne kvote
                     if (tCal.get(Calendar.YEAR) == currentYear &&
                             tCal.get(Calendar.WEEK_OF_YEAR) == currentWeek) {
                         if (t.getDifficulty() == Task.Difficulty.EXTREME) extremeCount++;
                     }
 
-                    // Mesečne kvote
                     if (tCal.get(Calendar.YEAR) == currentYear &&
                             tCal.get(Calendar.MONTH) == currentMonth) {
                         if (t.getImportance() == Task.Importance.SPECIAL) specialCount++;
                     }
                 }
 
-                // Vrednost XP-a koju ćemo dodati
                 final int[] earnedXp = {0};
 
-                // Računanje XP za trenutni zadatak
                 if (task.getDifficulty() == Task.Difficulty.VERY_EASY &&
                         task.getImportance() == Task.Importance.NORMAL &&
                         veryEasyNormalCount < 5) {
@@ -228,7 +223,6 @@ public class TaskManager {
                     return;
                 }
 
-                // Dodavanje XP korisniku
                 userManager.getUserById(userId, new UserManager.OnUserLoadListener() {
                     @Override
                     public void onSuccess(User user) {
@@ -274,7 +268,6 @@ public class TaskManager {
             }
         });
     }
-    
 
     public void checkIfTaskExpired(Task task) {
         if (task.getExecutionTime() == null || task.getStatus() != Task.TaskStatus.ACTIVE) return;

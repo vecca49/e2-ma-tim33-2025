@@ -86,7 +86,7 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
             });
 
             itemView.setOnLongClickListener(v -> {
-                handleTaskStatusChange(v.getContext(), task);
+                showTaskDetails(v.getContext(), task);
                 return true;
             });
 
