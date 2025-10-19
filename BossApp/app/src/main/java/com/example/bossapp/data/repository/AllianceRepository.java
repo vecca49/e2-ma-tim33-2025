@@ -4,7 +4,9 @@ import android.util.Log;
 
 import com.example.bossapp.data.model.Alliance;
 import com.example.bossapp.data.model.AllianceInvitation;
+import com.example.bossapp.data.model.MemberProgress;
 import com.example.bossapp.data.model.User;
+import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -505,7 +507,6 @@ public class AllianceRepository {
                 .addOnFailureListener(listener::onError);
     }
 
-    // ===== DISBAND ALLIANCE COMPLETELY =====
     public void disbandAllianceCompletely(String allianceId, List<String> memberIds,
                                           OnAllianceActionListener listener) {
         WriteBatch batch = db.batch();
@@ -551,7 +552,6 @@ public class AllianceRepository {
                 });
     }
 
-    // ===== GET ALLIANCE MEMBERS =====
     public void getAllianceMembers(List<String> memberIds, UserRepository.OnUsersLoadListener listener) {
         if (memberIds == null || memberIds.isEmpty()) {
             listener.onSuccess(new ArrayList<>());
@@ -576,4 +576,164 @@ public class AllianceRepository {
                     listener.onError(e);
                 });
     }
+
+    public void startSpecialMission(String allianceId, OnAllianceActionListener listener) {
+        db.collection(COLLECTION_ALLIANCES)
+                .document(allianceId)
+                .get()
+                .addOnSuccessListener(doc -> {
+                    if (!doc.exists()) {
+                        listener.onError(new Exception("Alliance not found"));
+                        return;
+                    }
+
+                    Alliance alliance = doc.toObject(Alliance.class);
+                    if (alliance == null) {
+                        listener.onError(new Exception("Failed to parse alliance"));
+                        return;
+                    }
+
+                    if (alliance.hasMission()) {
+                        listener.onError(new Exception("Savez već ima aktivnu specijalnu misiju"));
+                        return;
+                    }
+
+                    String missionId = db.collection("specialMissions").document().getId();
+                    long startTime = System.currentTimeMillis();
+                    long endTime = startTime + 14L * 24 * 60 * 60 * 1000;
+
+                    // HP bossa = 100 * broj članova saveza
+                    int calculatedBossHp = 100 * alliance.getMemberCount();
+
+                    Map<String, Object> missionData = new HashMap<>();
+                    missionData.put("missionId", missionId);
+                    missionData.put("allianceId", allianceId);
+                    missionData.put("bossHp", calculatedBossHp);
+                    missionData.put("startTime", startTime);
+                    missionData.put("endTime", endTime);
+                    missionData.put("status", "active");
+
+                    // inicijalizacija napretka po članovima
+                    Map<String, Object> progress = new HashMap<>();
+                    for (String memberId : alliance.getMemberIds()) {
+                        Map<String, Object> userProgress = new HashMap<>();
+                        userProgress.put("regularBossHits", 0);
+                        progress.put(memberId, userProgress);
+                    }
+                    missionData.put("progress", progress);
+
+                    WriteBatch batch = db.batch();
+                    batch.set(db.collection("specialMissions").document(missionId), missionData);
+                    batch.update(db.collection(COLLECTION_ALLIANCES).document(allianceId),
+                            "currentMissionId", missionId);
+
+                    batch.commit()
+                            .addOnSuccessListener(aVoid -> listener.onSuccess())
+                            .addOnFailureListener(listener::onError);
+
+                })
+                .addOnFailureListener(listener::onError);
+    }
+
+    public void recordMemberProgress(String missionId, String userId, int damage, OnMissionUpdateListener listener) {
+        DocumentReference missionRef = db.collection("specialMissions").document(missionId);
+
+        db.runTransaction(transaction -> {
+                    DocumentSnapshot snapshot = transaction.get(missionRef);
+                    if (!snapshot.exists()) throw new RuntimeException("Mission not found");
+
+                    Map<String, Object> progress = (Map<String, Object>) snapshot.get("progress");
+                    if (progress == null) progress = new HashMap<>();
+
+                    Map<String, Object> userProgress = (Map<String, Object>) progress.get(userId);
+                    if (userProgress == null) userProgress = new HashMap<>();
+
+                    int currentDamage = userProgress.get("damageDealt") != null ? ((Long) userProgress.get("damageDealt")).intValue() : 0;
+                    userProgress.put("damageDealt", currentDamage + damage);
+
+                    int tasksCompleted = userProgress.get("tasksCompleted") != null ? ((Long) userProgress.get("tasksCompleted")).intValue() : 0;
+                    userProgress.put("tasksCompleted", tasksCompleted + 1);
+
+                    progress.put(userId, userProgress);
+
+                    transaction.update(missionRef, "progress", progress);
+
+                    return null;
+                }).addOnSuccessListener(aVoid -> listener.onSuccess())
+                .addOnFailureListener(e -> listener.onError(e));
+    }
+
+    public interface OnMissionUpdateListener {
+        void onSuccess();
+        void onError(Exception e);
+    }
+
+    public interface OnMissionProgressListener {
+        void onProgress(Map<String, Map<String, Object>> membersProgress, int totalDamage, int bossHp);
+        void onError(Exception e);
+    }
+
+    public void getMissionProgress(String missionId, OnMissionProgressListener listener) {
+        db.collection("specialMissions").document(missionId)
+                .get()
+                .addOnSuccessListener(doc -> {
+                    if (!doc.exists()) {
+                        listener.onError(new Exception("Mission not found"));
+                        return;
+                    }
+
+                    Map<String, Object> rawProgress = (Map<String, Object>) doc.get("progress");
+                    Map<String, Map<String, Object>> membersProgress = new HashMap<>();
+                    int totalDamage = 0;
+
+                    int bossHp = doc.get("bossHp") != null ? ((Long) doc.get("bossHp")).intValue() : 0;
+
+                    if (rawProgress != null) {
+                        for (Map.Entry<String, Object> entry : rawProgress.entrySet()) {
+                            String userId = entry.getKey();
+                            Map<String, Object> userProgress = (Map<String, Object>) entry.getValue();
+
+                            int damage = userProgress.get("damageDealt") != null ? ((Long) userProgress.get("damageDealt")).intValue() : 0;
+                            totalDamage += damage;
+
+                            membersProgress.put(userId, userProgress);
+                        }
+                    }
+
+                    listener.onProgress(membersProgress, totalDamage, bossHp);
+                })
+                .addOnFailureListener(listener::onError);
+    }
+
+
+    public void recordSpecialMissionProgressIncrement(String missionId, String userId, String field, int increment) {
+        DocumentReference missionRef = db.collection("specialMissions").document(missionId);
+
+        db.runTransaction(transaction -> {
+                    DocumentSnapshot snapshot = transaction.get(missionRef);
+                    if (!snapshot.exists()) throw new RuntimeException("Mission not found");
+
+                    Map<String, Object> membersProgress = (Map<String, Object>) snapshot.get("progress");
+                    if (membersProgress == null) membersProgress = new HashMap<>();
+
+                    Map<String, Object> userProgress = (Map<String, Object>) membersProgress.get(userId);
+                    if (userProgress == null) userProgress = new HashMap<>();
+
+                    long currentValue = userProgress.get(field) != null ? ((Long) userProgress.get(field)) : 0;
+                    userProgress.put(field, currentValue + increment);
+
+                    membersProgress.put(userId, userProgress);
+                    transaction.update(missionRef, "progress", membersProgress);
+
+                    return null;
+                }).addOnSuccessListener(aVoid -> Log.d(TAG, "✅ Progress updated"))
+                .addOnFailureListener(e -> Log.e(TAG, "❌ Error updating progress: " + e.getMessage()));
+    }
+
+
+
+
+
+
+
 }

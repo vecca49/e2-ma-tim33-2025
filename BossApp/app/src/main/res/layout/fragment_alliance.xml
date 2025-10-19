@@ -140,6 +140,34 @@
 
             </com.google.android.material.card.MaterialCardView>
 
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnStartSpecialMission"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:text="Start mission"
+                android:textSize="16sp"
+                android:layout_marginTop="12dp"
+                android:visibility="gone"
+                app:icon="@android:drawable/ic_media_play"
+                app:iconGravity="start"
+                app:cornerRadius="8dp"/>
+
+            <TextView
+                android:id="@+id/tvMissionProgress"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Progress: 0"
+                android:textSize="16sp"
+                android:layout_marginTop="12dp"/>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvMissionMembersProgress"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:nestedScrollingEnabled="false"
+                android:layout_marginTop="8dp"/>
+
+
             <!-- Members Section -->
             <TextView
                 android:layout_width="wrap_content"
