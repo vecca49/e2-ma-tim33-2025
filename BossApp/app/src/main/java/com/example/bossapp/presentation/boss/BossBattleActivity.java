@@ -370,11 +370,24 @@ public class BossBattleActivity extends AppCompatActivity {
     }
 
     private void processEquipmentAfterBattle() {
+        Log.d(TAG, "PROCESSING EQUIPMENT AFTER BATTLE - START");
+        Log.d(TAG, "User ID: " + player.getUserId());
+        Log.d(TAG, "Active equipment count: " + activeEquipment.size());
+
+        for (Equipment eq : activeEquipment) {
+            Log.d(TAG, "Active equipment: " + eq.getDisplayName() +
+                    ", duration=" + eq.getRemainingDuration() +
+                    ", isActive=" + eq.getIsActive());
+        }
+
         equipmentManager.processFightEnd(player.getUserId(),
                 new EquipmentRepository.OnEquipmentListener() {
                     @Override
                     public void onSuccess() {
-                        Log.d(TAG, "Equipment processed after battle");
+                        Log.d(TAG, "Equipment processed successfully after battle");
+
+                        // RELOAD EQUIPMENT NAKON OBRADE
+                        loadActiveEquipment();
                     }
 
                     @Override
