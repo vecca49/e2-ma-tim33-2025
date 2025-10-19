@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:gravity="center_horizontal"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background">
+
+    <ImageView
+        android:id="@+id/bossImage"
+        android:layout_width="180dp"
+        android:layout_height="180dp"
+        android:src="@mipmap/boss_idle_foreground"
+        android:layout_marginBottom="12dp"
+        android:contentDescription="@mipmap/boss_idle_foreground"  />
+
+    <ProgressBar
+        android:id="@+id/bossHpBar"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="250dp"
+        android:layout_height="16dp"
+        android:progress="100"
+        android:max="100"
+        android:progressDrawable="@mipmap/boss_idle_foreground" />
+
+    <TextView
+        android:id="@+id/bossHpText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="HP: 100 / 100"
+        android:layout_marginTop="4dp"
+        android:textColor="@color/text_primary"
+        android:textSize="16sp" />
+
+    <TextView
+        android:id="@+id/missionTimeText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Traje do: 01.11.2025"
+        android:textColor="@color/text_secondary"
+        android:textSize="14sp" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/membersRecycler"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="16dp"
+        android:layout_weight="1" />
+
+    <Button
+        android:id="@+id/attackButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="NAPADNI BOSA"
+        android:layout_marginTop="12dp"
+        android:backgroundTint="@color/error"
+        android:textColor="@android:color/white"
+        android:textAllCaps="false"
+        android:padding="12dp" />
+
+</LinearLayout>

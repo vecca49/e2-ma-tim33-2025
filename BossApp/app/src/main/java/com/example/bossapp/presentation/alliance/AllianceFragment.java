@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.bossapp.R;
 import com.example.bossapp.data.model.Alliance;
+import com.example.bossapp.data.model.MemberProgress;
 import com.example.bossapp.data.model.User;
 import com.example.bossapp.data.repository.AllianceRepository;
 import com.example.bossapp.data.repository.UserRepository;
@@ -27,6 +28,7 @@ import com.google.firebase.auth.FirebaseAuth;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class AllianceFragment extends BaseFragment {
 
@@ -40,12 +42,19 @@ public class AllianceFragment extends BaseFragment {
     // Has alliance views
     private TextView tvAllianceName;
     private TextView tvLeaderName;
+    private TextView tvMissionProgress;
+
+    private MaterialButton btnStartSpecialMission;
     private TextView tvMemberCount;
     private RecyclerView rvMembers;
     private MaterialButton btnOpenChat;
     private MaterialButton btnInviteFriends;
     private MaterialButton btnLeaveAlliance;
     private MaterialButton btnDisbandAlliance;
+    private RecyclerView rvMissionMembersProgress;
+    private MissionProgressAdapter missionProgressAdapter;
+    private List<MemberProgress> missionProgressList = new ArrayList<>();
+
 
     private AllianceRepository allianceRepository;
     private UserRepository userRepository;
@@ -85,6 +94,10 @@ public class AllianceFragment extends BaseFragment {
 
         btnCreateAlliance = view.findViewById(R.id.btnCreateAlliance);
 
+        btnStartSpecialMission = view.findViewById(R.id.btnStartSpecialMission);
+        tvMissionProgress = view.findViewById(R.id.tvMissionProgress);
+        rvMissionMembersProgress = view.findViewById(R.id.rvMissionMembersProgress);
+
         tvAllianceName = view.findViewById(R.id.tvAllianceName);
         tvLeaderName = view.findViewById(R.id.tvLeaderName);
         tvMemberCount = view.findViewById(R.id.tvMemberCount);
@@ -94,6 +107,7 @@ public class AllianceFragment extends BaseFragment {
         btnLeaveAlliance = view.findViewById(R.id.btnLeaveAlliance);
         btnDisbandAlliance = view.findViewById(R.id.btnDisbandAlliance);
     }
+
 
     private void setupButtons() {
         btnCreateAlliance.setOnClickListener(v -> showCreateAllianceDialog());
@@ -162,9 +176,106 @@ public class AllianceFragment extends BaseFragment {
         btnLeaveAlliance.setVisibility(isLeader ? View.GONE : View.VISIBLE);
         btnInviteFriends.setVisibility(isLeader ? View.VISIBLE : View.GONE);
 
+        btnStartSpecialMission.setVisibility(isLeader && alliance.getCurrentMissionId() == null
+                ? View.VISIBLE : View.GONE);
+
+        btnStartSpecialMission.setOnClickListener(v -> startSpecialMission());
+
         setupMembersRecyclerView();
         loadMembers(alliance.getMemberIds());
+
+        setupMissionProgressRecyclerView();
+
+        String missionId = alliance.getCurrentMissionId();
+        if (missionId != null && !missionId.isEmpty()) {
+            trackMissionProgress(missionId);
+        }
     }
+
+    private void setupMissionProgressRecyclerView() {
+        missionProgressAdapter = new MissionProgressAdapter(missionProgressList);
+
+        LinearLayoutManager layoutManager = new LinearLayoutManager(requireContext(),
+                LinearLayoutManager.VERTICAL, false);
+        rvMissionMembersProgress.setLayoutManager(layoutManager);
+        rvMissionMembersProgress.setAdapter(missionProgressAdapter);
+    }
+
+
+    private void startSpecialMission() {
+        if (currentAlliance == null) return;
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Pokreni specijalnu misiju")
+                .setMessage("Da li želite da pokrenete specijalnu misiju? Misija traje 2 nedelje i ne može se prekinuti.")
+                .setPositiveButton("Pokreni", (dialog, which) -> {
+                    performStartSpecialMission();
+                })
+                .setNegativeButton("Otkaži", null)
+                .show();
+    }
+
+    private void performStartSpecialMission() {
+        progressBar.setVisibility(View.VISIBLE);
+
+        allianceRepository.startSpecialMission(
+                currentAlliance.getAllianceId(),
+                new AllianceRepository.OnAllianceActionListener() {
+                    @Override
+                    public void onSuccess() {
+                        progressBar.setVisibility(View.GONE);
+                        Toast.makeText(requireContext(), "Specijalna misija pokrenuta!", Toast.LENGTH_SHORT).show();
+
+                        loadCurrentUser();
+                    }
+
+                    @Override
+                    public void onError(Exception e) {
+                        progressBar.setVisibility(View.GONE);
+                        Toast.makeText(requireContext(), "Greška: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
+
+    private void trackMissionProgress(String missionId) {
+        allianceRepository.getMissionProgress(missionId, new AllianceRepository.OnMissionProgressListener() {
+            @Override
+            public void onProgress(Map<String, Map<String, Object>> membersProgress, int totalDamage, int bossHp) {
+                tvMissionProgress.setText("Boss HP: " + bossHp + " | Ukupna šteta: " + totalDamage);
+
+                missionProgressList.clear();
+                for (String memberId : membersProgress.keySet()) {
+                    Map<String, Object> data = membersProgress.get(memberId);
+                    String username = (String) data.get("username");
+                    int storePurchases = data.get("storePurchases") != null ? ((Long) data.get("storePurchases")).intValue() : 0;
+                    int bossHits = data.get("bossHits") != null ? ((Long) data.get("bossHits")).intValue() : 0;
+                    int easyTasks = data.get("easyTasks") != null ? ((Long) data.get("easyTasks")).intValue() : 0;
+                    int otherTasks = data.get("otherTasks") != null ? ((Long) data.get("otherTasks")).intValue() : 0;
+                    boolean noUnfinishedTasks = data.get("noUnfinishedTasks") != null && (Boolean) data.get("noUnfinishedTasks");
+                    int messageDays = data.get("messageDays") != null ? ((Long) data.get("messageDays")).intValue() : 0;
+
+
+                    MemberProgress memberProgress = new MemberProgress(
+                            username, storePurchases, bossHits, easyTasks,
+                            otherTasks, noUnfinishedTasks, messageDays
+                    );
+
+                    missionProgressList.add(memberProgress);
+                }
+                missionProgressAdapter.notifyDataSetChanged();
+            }
+
+            @Override
+            public void onError(Exception e) {
+                Toast.makeText(requireContext(), "Error loading mission progress", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+
+
+
 
     private void setupMembersRecyclerView() {
         membersAdapter = new FindFriendsAdapter(membersList, null,
