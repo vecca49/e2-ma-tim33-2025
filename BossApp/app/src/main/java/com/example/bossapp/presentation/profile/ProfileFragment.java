@@ -8,6 +8,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -25,6 +26,8 @@ import com.example.bossapp.data.model.User;
 import com.example.bossapp.data.repository.FriendRepository;
 import com.example.bossapp.data.repository.UserRepository;
 import com.example.bossapp.presentation.base.BaseFragment;
+import com.example.bossapp.presentation.equipment.InventoryActivity;
+import com.example.bossapp.presentation.equipment.ShopActivity;
 import com.example.bossapp.presentation.friends.FindFriendsAdapter;
 import com.example.bossapp.presentation.friends.QRScannerActivity;
 import com.google.android.material.button.MaterialButton;
@@ -57,6 +60,8 @@ public class ProfileFragment extends BaseFragment {
     private User displayedUser;
     private User currentUser;
     private MaterialButton btnLevelProgress;
+    private Button btnShop;
+    private Button btnInventory;
 
     public static ProfileFragment newInstance(String userId) {
         ProfileFragment fragment = new ProfileFragment();
@@ -133,6 +138,9 @@ public class ProfileFragment extends BaseFragment {
         tvSeeAllFriends = view.findViewById(R.id.tvSeeAllFriends);
         tvNoFriends = view.findViewById(R.id.tvNoFriends);
         btnLevelProgress = view.findViewById(R.id.btnLevelProgress);
+        btnShop = view.findViewById(R.id.btnShop);
+        btnInventory = view.findViewById(R.id.btnInventory);
+
     }
 
     private void setupButtons() {
@@ -156,6 +164,16 @@ public class ProfileFragment extends BaseFragment {
                     .replace(R.id.fragmentContainer, new com.example.bossapp.presentation.level.LevelProgressFragment())
                     .addToBackStack(null)
                     .commit();
+        });
+
+        btnShop.setOnClickListener(v -> {
+            Intent intent = new Intent(requireActivity(), ShopActivity.class);
+            startActivity(intent);
+        });
+
+        btnInventory.setOnClickListener(v -> {
+            Intent intent = new Intent(requireActivity(), InventoryActivity.class);
+            startActivity(intent);
         });
     }
 
@@ -248,12 +266,18 @@ public class ProfileFragment extends BaseFragment {
             btnFriendAction.setVisibility(View.GONE);
             tvCoins.setVisibility(View.VISIBLE);
             tvPowerPoints.setVisibility(View.VISIBLE);
+            btnShop.setVisibility(View.VISIBLE);
+            btnInventory.setVisibility(View.VISIBLE);
+            btnLevelProgress.setVisibility(View.VISIBLE);
         } else {
             btnChangePassword.setVisibility(View.GONE);
             btnScanQR.setVisibility(View.GONE);
             btnFriendAction.setVisibility(View.VISIBLE);
             tvCoins.setVisibility(View.GONE);
             tvPowerPoints.setVisibility(View.GONE);
+            btnShop.setVisibility(View.GONE);
+            btnInventory.setVisibility(View.GONE);
+            btnLevelProgress.setVisibility(View.GONE);
         }
     }
 

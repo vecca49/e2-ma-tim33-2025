@@ -22,17 +22,26 @@ import com.example.bossapp.R;
 import com.example.bossapp.business.AuthManager;
 import com.example.bossapp.business.BossBattleManager;
 import com.example.bossapp.business.BossManager;
+import com.example.bossapp.business.EquipmentManager;
 import com.example.bossapp.business.TaskManager;
 import com.example.bossapp.business.UserManager;
 import com.example.bossapp.data.model.Boss;
+import com.example.bossapp.data.model.Equipment;
 import com.example.bossapp.data.model.User;
+import com.example.bossapp.data.repository.EquipmentRepository;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
 public class BossBattleActivity extends AppCompatActivity {
 
+    private static final String TAG = "BossBattleActivity";
     private ProgressBar bossHpBar, playerPpBar;
     private TextView bossHpText, playerPpText, attackCountText, chanceText, rewardText;
     private ImageView bossImage, chestImage, coinIcon, itemIcon;
     private Button attackButton;
+    private TextView tvActiveEquipment;
     private LinearLayout resultLayout;
 
     private BossBattleManager battleManager;
@@ -51,6 +60,16 @@ public class BossBattleActivity extends AppCompatActivity {
     private long lastShakeTime = 0;
     private static final int SHAKE_THRESHOLD = 400;
 
+    private List<Equipment> activeEquipment = new ArrayList<>();
+    private int originalPP = 0;
+    private int bonusPP = 0;
+    private int bonusSuccessRate = 0;
+    private int extraAttacks = 0;
+    private boolean equipmentLoaded = false;
+    private EquipmentManager equipmentManager;
+    private EquipmentRepository equipmentRepository;
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -59,6 +78,9 @@ public class BossBattleActivity extends AppCompatActivity {
         initUI();
         authManager = new AuthManager(this);
         userManager = new UserManager();
+        equipmentManager = new EquipmentManager();
+        equipmentRepository = new EquipmentRepository();
+
 
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         if (sensorManager != null) {
@@ -75,6 +97,7 @@ public class BossBattleActivity extends AppCompatActivity {
         playerPpText = findViewById(R.id.playerPpText);
         attackCountText = findViewById(R.id.attackCountText);
         chanceText = findViewById(R.id.chanceText);
+        tvActiveEquipment = findViewById(R.id.tvActiveEquipment);
         bossImage = findViewById(R.id.bossImage);
         attackButton = findViewById(R.id.attackButton);
 
@@ -105,11 +128,13 @@ public class BossBattleActivity extends AppCompatActivity {
                     return;
                 }
 
+                originalPP = player.getPp();
+
                 Toast.makeText(BossBattleActivity.this,
                         "Dobrodošao, " + player.getUsername(),
                         Toast.LENGTH_SHORT).show();
 
-                initBossBattle();
+                loadActiveEquipment();
             }
 
             @Override
@@ -120,8 +145,143 @@ public class BossBattleActivity extends AppCompatActivity {
             }
         });
     }
+    // 🟢 NOVA METODA - UČITAJ AKTIVNU OPREMU
+    private void loadActiveEquipment() {
+        equipmentRepository.getActiveEquipment(player.getUserId(),
+                new EquipmentRepository.OnEquipmentListListener() {
+                    @Override
+                    public void onSuccess(List<Equipment> equipment) {
+                        activeEquipment = equipment;
+                        applyEquipmentBonuses();
+                        equipmentLoaded = true;
+
+                        Log.d(TAG, "Active equipment loaded: " + equipment.size() + " items");
+                        initBossBattle();
+                    }
+
+                    @Override
+                    public void onError(String message) {
+                        Log.e(TAG, "Error loading equipment: " + message);
+                        equipmentLoaded = true;
+                        initBossBattle();
+                    }
+                });
+    }
+
+    // 🟢 NOVA METODA - PRIMENI BONUSE OD OPREME
+    private void applyEquipmentBonuses() {
+        bonusPP = 0;
+        bonusSuccessRate = 0;
+        extraAttacks = 0;
+
+        StringBuilder equipmentText = new StringBuilder("Active: ");
+        boolean hasEquipment = false;
+
+        for (Equipment equipment : activeEquipment) {
+            hasEquipment = true;
+
+            switch (equipment.getType()) {
+                case POTION:
+                    Equipment.PotionType potion = Equipment.PotionType.valueOf(equipment.getSubType());
+                    int ppBonus = (int) (originalPP * potion.powerBoost);
+                    bonusPP += ppBonus;
+                    equipmentText.append(equipment.getDisplayName()).append(" (+").append(ppBonus).append(" PP), ");
+                    Log.d(TAG, "Potion bonus: +" + ppBonus + " PP");
+                    break;
+
+                case ARMOR:
+                    Equipment.ArmorType armor = Equipment.ArmorType.valueOf(equipment.getSubType());
+
+                    if (armor.bonusType.equals("powerBoost")) {
+                        int armorPpBonus = (int) (originalPP * armor.value);
+                        bonusPP += armorPpBonus;
+                        equipmentText.append("Gloves (+").append(armorPpBonus).append(" PP), ");
+                        Log.d(TAG, "Gloves bonus: +" + armorPpBonus + " PP");
+
+                    } else if (armor.bonusType.equals("successRate")) {
+                        int successBonus = (int) (armor.value * 100);
+                        bonusSuccessRate += successBonus;
+                        equipmentText.append("Shield (+").append(successBonus).append("% Success), ");
+                        Log.d(TAG, "Shield bonus: +" + successBonus + "% Success Rate");
+
+                    } else if (armor.bonusType.equals("extraAttack")) {
+                        Random random = new Random();
+                        if (random.nextInt(100) < (armor.value * 100)) {
+                            extraAttacks++;
+                            equipmentText.append("Boots (+1 Attack), ");
+                            Log.d(TAG, "Boots bonus: +1 extra attack");
+                        }
+                    }
+                    break;
+
+                case WEAPON:
+                    Equipment.WeaponType weapon = Equipment.WeaponType.valueOf(equipment.getSubType());
+
+                    if (weapon.bonusType.equals("powerBoost")) {
+                        int weaponPpBonus = (int) (originalPP * equipment.getCurrentValue());
+                        bonusPP += weaponPpBonus;
+                        equipmentText.append(equipment.getDisplayName()).append(" (+").append(weaponPpBonus).append(" PP), ");
+                        Log.d(TAG, "Weapon bonus: +" + weaponPpBonus + " PP");
+                    }
+                    break;
+            }
+        }
+        // Ažuriraj PP igrača
+        player.setPp(originalPP + bonusPP);
+
+        if (hasEquipment) {
+            equipmentText.setLength(equipmentText.length() - 2);
+            tvActiveEquipment.setText(equipmentText.toString());
+            tvActiveEquipment.setVisibility(View.VISIBLE);
+        } else {
+            tvActiveEquipment.setVisibility(View.GONE);
+        }
+
+        Log.d(TAG, "Total bonuses: PP=" + bonusPP + ", Success Rate=" + bonusSuccessRate + "%, Extra Attacks=" + extraAttacks);
+    }
 
     private void initBossBattle() {
+        if (!equipmentLoaded) { // 🟢 DODATO - ČEKAJ NA OPREMU
+            Log.d(TAG, "Waiting for equipment to load...");
+            return;
+        }
+
+        BossManager bossManager = new BossManager();
+
+        bossManager.loadCurrentBoss(player, new BossManager.OnBossLoadListener() {
+            @Override
+            public void onSuccess(Boss boss) {
+                if (!bossManager.shouldShowBoss(player, boss)) {
+                    hideBossUI();
+                    Toast.makeText(BossBattleActivity.this,
+                            "Nema dostupnog bossa za ovaj nivo!",
+                            Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                TaskManager taskManager = new TaskManager();
+                taskManager.calculateSuccessRate(player.getUserId(), successRate -> {
+                    // 🟢 DODAJ BONUS SUCCESS RATE OD OPREME
+                    int finalSuccessRate = Math.min(100, successRate + bonusSuccessRate);
+
+                    battleManager = new BossBattleManager(player, boss, finalSuccessRate); // 🟢 KORISTI finalSuccessRate
+
+                    chanceText.setText("Šansa: " + finalSuccessRate + "%"); // 🟢 PRIKAŽI SA BONUSOM
+
+                    showBossUI();
+                    setupUI(bossManager, boss);
+                });
+
+            }
+
+            @Override
+            public void onError(String message) {
+                Toast.makeText(BossBattleActivity.this, "Greška: " + message, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    /*private void initBossBattle() {
         BossManager bossManager = new BossManager();
 
         bossManager.loadCurrentBoss(player, new BossManager.OnBossLoadListener() {
@@ -152,7 +312,7 @@ public class BossBattleActivity extends AppCompatActivity {
                 Toast.makeText(BossBattleActivity.this, "Greška: " + message, Toast.LENGTH_SHORT).show();
             }
         });
-    }
+    }*/
 
     private void hideBossUI() {
         bossImage.setVisibility(View.GONE);
@@ -187,6 +347,7 @@ public class BossBattleActivity extends AppCompatActivity {
                         public void onSuccess() {
                             player.setCurrentBossNumber(boss.getBossNumber());
                             Toast.makeText(BossBattleActivity.this, "Boss je poražen!", Toast.LENGTH_LONG).show();
+                            processEquipmentAfterBattle();
                         }
 
                         @Override
@@ -194,6 +355,8 @@ public class BossBattleActivity extends AppCompatActivity {
                             Log.e("BossBattle", "Greška pri ažuriranju bossa: " + message);
                         }
                     });
+                } else {
+                    processEquipmentAfterBattle();
                 }
 
                 showResult(coins, itemDropped);
@@ -206,11 +369,33 @@ public class BossBattleActivity extends AppCompatActivity {
         });
     }
 
+    private void processEquipmentAfterBattle() {
+        equipmentManager.processFightEnd(player.getUserId(),
+                new EquipmentRepository.OnEquipmentListener() {
+                    @Override
+                    public void onSuccess() {
+                        Log.d(TAG, "Equipment processed after battle");
+                    }
+
+                    @Override
+                    public void onError(String message) {
+                        Log.e(TAG, "Error processing equipment: " + message);
+                    }
+                });
+    }
+
     private void updateTexts() {
         bossHpBar.setProgress(battleManager.getBossHpRemaining());
         bossHpText.setText("Boss HP: " + battleManager.getBossHpRemaining() + "/" + battleManager.getBossHpMax());
         attackCountText.setText("Napadi: " + battleManager.getAttacksLeft() + " / 5");
         playerPpText.setText("PP: " + player.getPowerPoints());
+
+        // 🟢 PRIKAŽI PP SA BONUSOM
+        if (bonusPP > 0) {
+            playerPpText.setText("PP: " + player.getPowerPoints() + " (+" + bonusPP + " bonus)");
+        } else {
+            playerPpText.setText("PP: " + player.getPowerPoints());
+        }
     }
 
     private void playMissAnimation() {
@@ -328,6 +513,7 @@ public class BossBattleActivity extends AppCompatActivity {
                     public void onSuccess() {
                         player.setCurrentBossNumber(battleManager.getCurrentBoss().getBossNumber());
                         Toast.makeText(BossBattleActivity.this, "🎉 Boss je poražen!", Toast.LENGTH_LONG).show();
+                        processEquipmentAfterBattle();
                     }
 
                     @Override
@@ -335,6 +521,8 @@ public class BossBattleActivity extends AppCompatActivity {
                         Log.e("BossBattle", "Greška pri ažuriranju bossa: " + message);
                     }
                 });
+            } else {
+                processEquipmentAfterBattle();
             }
 
             showResult(coins, itemDropped);

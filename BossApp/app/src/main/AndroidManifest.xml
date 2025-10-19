@@ -85,6 +85,17 @@
 
         <activity android:name=".presentation.boss.BossBattleActivity" />
 
+        <activity
+            android:name=".presentation.equipment.ShopActivity"
+            android:theme="@style/Theme.BossApp"
+            android:windowSoftInputMode="adjustResize"
+            android:screenOrientation="portrait"/>
+
+        <activity
+            android:name=".presentation.equipment.InventoryActivity"
+            android:theme="@style/Theme.BossApp"
+            android:windowSoftInputMode="adjustResize"
+            android:screenOrientation="portrait"/>
 
 
 
