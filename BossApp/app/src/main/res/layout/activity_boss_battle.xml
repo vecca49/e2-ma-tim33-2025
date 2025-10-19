@@ -71,7 +71,6 @@
         android:layout_width="200dp"
         android:layout_height="wrap_content" />
 
-    <!-- 👇 Sekcija koja se prikazuje kad se završi borba -->
     <LinearLayout
         android:id="@+id/resultLayout"
         android:orientation="vertical"

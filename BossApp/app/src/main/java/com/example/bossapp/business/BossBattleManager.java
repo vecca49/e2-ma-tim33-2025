@@ -1,8 +1,11 @@
 package com.example.bossapp.business;
 
 import android.util.Log;
+
 import com.example.bossapp.data.model.Boss;
 import com.example.bossapp.data.model.User;
+import com.google.firebase.firestore.FirebaseFirestore;
+
 import java.util.Random;
 
 public class BossBattleManager {
@@ -17,11 +20,7 @@ public class BossBattleManager {
     private int coinsReward;
     private boolean battleEnded;
 
-
-    public void setSuccessRate(int rate) {
-        this.successRate = rate;
-    }
-
+    private final FirebaseFirestore db = FirebaseFirestore.getInstance();
 
     public interface OnBattleResultListener {
         void onBattleResult(boolean bossDefeated, int coinsEarned, boolean itemDropped);
@@ -45,15 +44,13 @@ public class BossBattleManager {
         if (battleEnded || attacksLeft <= 0) return false;
 
         attacksLeft--;
-
         Random random = new Random();
         int roll = random.nextInt(100);
-
         boolean hit = roll < successRate;
 
         if (hit) {
             bossHpRemaining -= player.getPowerPoints();
-            Log.d(TAG, "💥 Pogodak! - " + player.getPowerPoints() + " štete bosiću!");
+            Log.d(TAG, "💥 Pogodak! -" + player.getPowerPoints() + " štete!");
             if (bossHpRemaining <= 0) {
                 bossHpRemaining = 0;
                 battleEnded = true;
@@ -61,9 +58,6 @@ public class BossBattleManager {
             }
         } else {
             Log.d(TAG, "😬 Promašaj! (roll=" + roll + ", successRate=" + successRate + ")");
-            if (attacksLeft == 0 && !battleEnded) {
-                handleDefeat(listener);
-            }
         }
 
         if (attacksLeft == 0 && !battleEnded) {
@@ -79,58 +73,55 @@ public class BossBattleManager {
         if (currentBoss.getBossNumber() == 1) {
             coinsReward = 200;
         } else {
-            int prevCoins = (int) (200 * Math.pow(1.2, currentBoss.getBossNumber() - 1));
-            coinsReward = prevCoins;
+            coinsReward = (int) (200 * Math.pow(1.2, currentBoss.getBossNumber() - 1));
         }
 
-        player.setCoins(player.getCoins() + coinsReward);
-        currentBoss.setDefeated(true);
+        boolean itemDropped = new Random().nextInt(100) < 20;
 
-        boolean itemDropped = new Random().nextInt(100) < 20; // 20% šanse
+        if (itemDropped) {
+            boolean isWeapon = new Random().nextInt(100) < 5;
+            Log.d(TAG, "🎁 Dobijen item: " + (isWeapon ? "Oružje" : "Odeća"));
+        }
+
+        updatePlayerCoins(coinsReward);
+        currentBoss.setDefeated(true);
         listener.onBattleResult(true, coinsReward, itemDropped);
     }
 
     private void handleDefeat(OnBattleResultListener listener) {
         Log.d(TAG, "💀 Boss preživeo borbu...");
-        int hpLostPercent = (int) (100 - ((bossHpRemaining * 100.0) / currentBoss.getHp()));
 
+        int hpLostPercent = (int) (100 - ((bossHpRemaining * 100.0) / currentBoss.getHp()));
         boolean halfReward = hpLostPercent >= 50;
-        int baseCoins = currentBoss.getBossNumber() == 1 ? 200 : (int) (200 * Math.pow(1.2, currentBoss.getBossNumber() - 1));
-        coinsReward = halfReward ? baseCoins / 2 : 0;
+
+        int baseCoins = currentBoss.getBossNumber() == 1
+                ? 200
+                : (int) (200 * Math.pow(1.2, currentBoss.getBossNumber() - 1));
+
+        if (halfReward) {
+            coinsReward = baseCoins / 2;
+            Log.d(TAG, "🪙 Polovična nagrada jer je skinuto više od 50% HP-a bossa!");
+        } else {
+            coinsReward = 0;
+        }
 
         boolean itemDropped = halfReward && (new Random().nextInt(100) < 10);
 
         if (coinsReward > 0) {
-            player.setCoins(player.getCoins() + coinsReward);
+            updatePlayerCoins(coinsReward);
         }
 
         battleEnded = true;
         listener.onBattleResult(false, coinsReward, itemDropped);
     }
 
-    public boolean canShowBoss(User player) {
-        if (currentBoss.isDefeated()) return true;
+    private void updatePlayerCoins(int coinsEarned) {
+        int newTotal = player.getCoins() + coinsEarned;
+        player.setCoins(newTotal);
 
-        if (player.getLevel() < currentBoss.getBossNumber()) return false;
-
-
-        if (currentBoss.getBossNumber() > 1) {
-            int prevBossNumber = currentBoss.getBossNumber() - 1;
-
-            boolean prevBossDefeated = false;
-            if (!prevBossDefeated) return false;
-        }
-
-        return true;
+        db.collection("users").document(player.getUserId())
+                .update("coins", newTotal)
+                .addOnSuccessListener(unused -> Log.d(TAG, "💰 Coins updated: " + newTotal))
+                .addOnFailureListener(e -> Log.e(TAG, "❌ Greška pri ažuriranju coins-a: " + e.getMessage()));
     }
-
-
-    public String getBossLockedMessage(User player) {
-        if (player.getLevel() < currentBoss.getBossNumber()) {
-            return "You must complete the previous level to challenge this boss!";
-        }
-        return "Defeat the previous boss to unlock this one!";
-    }
-
-
 }

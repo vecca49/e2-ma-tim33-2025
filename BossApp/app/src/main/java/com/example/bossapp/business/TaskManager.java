@@ -5,6 +5,8 @@ import com.example.bossapp.data.model.Task;
 import com.example.bossapp.data.model.User;
 import com.example.bossapp.data.repository.TaskRepository;
 import com.google.firebase.Timestamp;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.Calendar;
 import java.util.List;
@@ -428,40 +430,45 @@ public class TaskManager {
         });
     }
 
-    public void calculateSuccessRate(String userId, OnSuccessRateCalculatedListener listener) {
-        getUserTasks(userId, new OnTasksLoadListener() {
-            @Override
-            public void onSuccess(List<Task> tasks) {
-                int completed = 0;
-                int total = 0;
-
-                for (Task t : tasks) {
-                    if (t.getStatus() == Task.TaskStatus.PAUSED || t.getStatus() == Task.TaskStatus.CANCELED)
-                        continue;
-
-                    if (t.isWithinQuota()) {
-                        total++;
-                        if (t.getStatus() == Task.TaskStatus.DONE) {
-                            completed++;
-                        }
-                    }
-                }
-
-                int successRate = total > 0 ? (completed * 100) / total : 0;
-                listener.onCalculated(successRate);
-            }
-
-            @Override
-            public void onError(String message) {
-                listener.onCalculated(0);
-            }
-        });
-    }
-
+    private final FirebaseFirestore db = FirebaseFirestore.getInstance();
 
     public interface OnSuccessRateCalculatedListener {
         void onCalculated(int successRate);
     }
+
+    public void calculateSuccessRate(String userId, OnSuccessRateCalculatedListener listener) {
+        db.collection("tasks")
+                .whereEqualTo("ownerId", userId)
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    int total = 0;
+                    int successful = 0;
+
+                    for (QueryDocumentSnapshot doc : querySnapshot) {
+                        String status = doc.getString("status");
+                        if (status == null) continue;
+
+                        boolean counts = !("PAUSED".equalsIgnoreCase(status) || "CANCELED".equalsIgnoreCase(status));
+
+                        if (counts) {
+                            total++;
+                            if ("DONE".equalsIgnoreCase(status)) successful++;
+                        }
+                    }
+
+                    int rate = (total > 0) ? (int) ((successful * 100.0) / total) : 0;
+                    Log.d("TaskManager", "Success rate: " + successful + "/" + total + " = " + rate + "%");
+                    listener.onCalculated(rate);
+                })
+                .addOnFailureListener(e -> {
+                    Log.e("TaskManager", "Greška pri računanju uspešnosti: " + e.getMessage());
+                    listener.onCalculated(0);
+                });
+    }
+
+
+
+
 
 
     public void editTask(Task task, String newName, String newDescription,
