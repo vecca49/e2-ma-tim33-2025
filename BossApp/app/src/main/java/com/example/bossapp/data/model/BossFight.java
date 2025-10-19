@@ -8,7 +8,7 @@ public class BossFight {
     private int userPp;
     private int maxAttempts;
     private int attemptsUsed;
-    private int successRate; // u %
+    private int successRate;
 
     public BossFight(String bossName, int bossHp, int userPp, int successRate) {
         this.bossName = bossName;

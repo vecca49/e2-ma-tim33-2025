@@ -199,5 +199,8 @@ public class Task {
         this.xpAwarded = xpAwarded;
     }
 
+    public boolean isWithinQuota() {
+        return true;
+    }
 }
 

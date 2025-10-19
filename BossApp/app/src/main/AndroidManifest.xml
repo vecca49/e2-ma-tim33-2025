@@ -83,6 +83,9 @@
         <activity android:name=".presentation.boss.BossFightActivity"
             android:exported="true" />
 
+        <activity android:name=".presentation.boss.BossBattleActivity" />
+
+
 
 
     </application>

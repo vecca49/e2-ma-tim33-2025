@@ -5,6 +5,8 @@ import com.example.bossapp.data.model.Task;
 import com.example.bossapp.data.model.User;
 import com.example.bossapp.data.repository.TaskRepository;
 import com.google.firebase.Timestamp;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.Calendar;
 import java.util.List;
@@ -173,7 +175,6 @@ public class TaskManager {
         LevelManager levelManager = new LevelManager();
         TaskRepository taskRepository = new TaskRepository();
 
-        // Prvo učitaj korisnika
         Log.d(TAG, "Učitavanje korisnika...");
         userManager.getUserById(userId, new UserManager.OnUserLoadListener() {
             @Override
@@ -182,7 +183,6 @@ public class TaskManager {
                 Log.d(TAG, "Trenutni XP: " + user.getXp());
                 Log.d(TAG, "Trenutni Level: " + user.getLevel());
 
-                // Učitaj sve taskove za proveru kvote
                 Log.d(TAG, "Učitavanje taskova za proveru kvote...");
                 taskRepository.getTasksByUser(userId, new TaskRepository.OnTasksLoadListener() {
                     @Override
@@ -325,7 +325,6 @@ public class TaskManager {
                             public void onSuccess() {
                                 Log.d(TAG, "✅ Korisnik uspešno ažuriran sa novim XP!");
 
-                                // *** PRVO: Proveri level up ***
                                 Log.d(TAG, "Proveravam level up...");
                                 levelManager.checkAndProcessLevelUp(user, new LevelManager.OnLevelUpListener() {
                                     @Override
@@ -335,21 +334,18 @@ public class TaskManager {
                                         Log.d(TAG, "Nova titula: " + newTitle);
                                         Log.d(TAG, "Dobijeni PP: " + ppGained);
 
-                                        // NAKON level up-a, označi task
                                         markTaskAsXpAwarded(task, taskRepository);
                                     }
 
                                     @Override
                                     public void onNoLevelUp() {
                                         Log.d(TAG, "Još nije vreme za level up");
-                                        // I dalje označi task kao awarded
                                         markTaskAsXpAwarded(task, taskRepository);
                                     }
 
                                     @Override
                                     public void onError(String message) {
                                         Log.e(TAG, "❌ Greška pri level up proveri: " + message);
-                                        // Ipak pokušaj da označiš task
                                         markTaskAsXpAwarded(task, taskRepository);
                                     }
                                 });
@@ -376,7 +372,6 @@ public class TaskManager {
         });
     }
 
-    // *** HELPER METODA - VAN SVIH CALLBACK-OVA ***
     private void markTaskAsXpAwarded(Task task, TaskRepository taskRepository) {
         task.setXpAwarded(true);
         taskRepository.saveTask(task, new TaskRepository.OnTaskSaveListener() {
@@ -388,7 +383,6 @@ public class TaskManager {
             @Override
             public void onError(Exception e) {
                 Log.e(TAG, "❌ Greška pri označavanju taska: " + e.getMessage());
-                // Nije kritično - XP je već dodeljen i level up proveren
             }
         });
     }
@@ -428,6 +422,42 @@ public class TaskManager {
                 listener.onError(e.getMessage());
             }
         });
+    }
+
+    private final FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+    public interface OnSuccessRateCalculatedListener {
+        void onCalculated(int successRate);
+    }
+
+    public void calculateSuccessRate(String userId, OnSuccessRateCalculatedListener listener) {
+        db.collection("tasks")
+                .whereEqualTo("ownerId", userId)
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    int total = 0;
+                    int successful = 0;
+
+                    for (QueryDocumentSnapshot doc : querySnapshot) {
+                        String status = doc.getString("status");
+                        if (status == null) continue;
+
+                        boolean counts = !("PAUSED".equalsIgnoreCase(status) || "CANCELED".equalsIgnoreCase(status));
+
+                        if (counts) {
+                            total++;
+                            if ("DONE".equalsIgnoreCase(status)) successful++;
+                        }
+                    }
+
+                    int rate = (total > 0) ? (int) ((successful * 100.0) / total) : 0;
+                    Log.d("TaskManager", "Success rate: " + successful + "/" + total + " = " + rate + "%");
+                    listener.onCalculated(rate);
+                })
+                .addOnFailureListener(e -> {
+                    Log.e("TaskManager", "Greška pri računanju uspešnosti: " + e.getMessage());
+                    listener.onCalculated(0);
+                });
     }
 
     public void editTask(Task task, String newName, String newDescription,
