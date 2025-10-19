@@ -40,6 +40,11 @@ public class BossBattleManager {
     public int getBossHpMax() { return currentBoss.getHp(); }
     public boolean isBattleEnded() { return battleEnded; }
 
+    public Boss getCurrentBoss() {
+        return currentBoss;
+    }
+
+
     public boolean performAttack(OnBattleResultListener listener) {
         if (battleEnded || attacksLeft <= 0) return false;
 

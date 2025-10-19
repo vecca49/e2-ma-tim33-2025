@@ -1,6 +1,10 @@
 package com.example.bossapp.presentation.boss;
 
 import android.animation.ObjectAnimator;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
@@ -15,9 +19,9 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.bossapp.R;
+import com.example.bossapp.business.AuthManager;
 import com.example.bossapp.business.BossBattleManager;
 import com.example.bossapp.business.BossManager;
-import com.example.bossapp.business.AuthManager;
 import com.example.bossapp.business.TaskManager;
 import com.example.bossapp.business.UserManager;
 import com.example.bossapp.data.model.Boss;
@@ -41,6 +45,12 @@ public class BossBattleActivity extends AppCompatActivity {
 
     private final Handler handler = new Handler();
 
+    private SensorManager sensorManager;
+    private Sensor accelerometer;
+    private float lastX, lastY, lastZ;
+    private long lastShakeTime = 0;
+    private static final int SHAKE_THRESHOLD = 400;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -49,6 +59,11 @@ public class BossBattleActivity extends AppCompatActivity {
         initUI();
         authManager = new AuthManager(this);
         userManager = new UserManager();
+
+        sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+        if (sensorManager != null) {
+            accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        }
 
         loadPlayerData();
     }
@@ -191,18 +206,11 @@ public class BossBattleActivity extends AppCompatActivity {
         });
     }
 
-    TaskManager taskManager = new TaskManager();
     private void updateTexts() {
         bossHpBar.setProgress(battleManager.getBossHpRemaining());
         bossHpText.setText("Boss HP: " + battleManager.getBossHpRemaining() + "/" + battleManager.getBossHpMax());
         attackCountText.setText("Napadi: " + battleManager.getAttacksLeft() + " / 5");
         playerPpText.setText("PP: " + player.getPowerPoints());
-    }
-
-    private void playHitAnimation() {
-        ObjectAnimator anim = ObjectAnimator.ofFloat(bossImage, "translationX", 0, 20, -20, 0);
-        anim.setDuration(300);
-        anim.start();
     }
 
     private void playMissAnimation() {
@@ -213,7 +221,6 @@ public class BossBattleActivity extends AppCompatActivity {
 
     private void playBossHitAnimation() {
         bossImage.setImageResource(R.mipmap.boss_hit);
-
         handler.postDelayed(() -> bossImage.setImageResource(R.mipmap.boss_idle_foreground), 300);
 
         ObjectAnimator shake = ObjectAnimator.ofFloat(bossImage, "translationX", 0, 20, -20, 0);
@@ -234,5 +241,86 @@ public class BossBattleActivity extends AppCompatActivity {
                 if (itemDropped) itemIcon.setVisibility(View.VISIBLE);
             }
         });
+    }
+
+    private final SensorEventListener shakeListener = new SensorEventListener() {
+        @Override
+        public void onSensorChanged(SensorEvent event) {
+            float x = event.values[0];
+            float y = event.values[1];
+            float z = event.values[2];
+
+            long currentTime = System.currentTimeMillis();
+
+            if ((currentTime - lastShakeTime) > 200) {
+                float deltaX = x - lastX;
+                float deltaY = y - lastY;
+                float deltaZ = z - lastZ;
+
+                double speed = Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ) * 100;
+
+                Log.d("SHAKE", "speed=" + speed);
+
+                if (speed > SHAKE_THRESHOLD && battleManager != null && !battleEnded) {
+                    lastShakeTime = currentTime;
+                    performShakeAttack();
+                }
+
+                lastX = x;
+                lastY = y;
+                lastZ = z;
+            }
+        }
+
+        @Override
+        public void onAccuracyChanged(Sensor sensor, int accuracy) {}
+    };
+
+    private void performShakeAttack() {
+        if (battleManager == null || battleEnded) return;
+
+        boolean hit = battleManager.performAttack((bossDefeated, coins, itemDropped) -> {
+            attackButton.setEnabled(false);
+
+            if (bossDefeated) {
+                BossManager bossManager = new BossManager();
+                bossManager.markBossAsDefeated(player, battleManager.getCurrentBoss(), new BossManager.OnBossSaveListener() {
+                    @Override
+                    public void onSuccess() {
+                        player.setCurrentBossNumber(battleManager.getCurrentBoss().getBossNumber());
+                        Toast.makeText(BossBattleActivity.this, "🎉 Boss je poražen!", Toast.LENGTH_LONG).show();
+                    }
+
+                    @Override
+                    public void onError(String message) {
+                        Log.e("BossBattle", "Greška pri ažuriranju bossa: " + message);
+                    }
+                });
+            }
+
+            showResult(coins, itemDropped);
+            updateTexts();
+        });
+
+        if (hit) playBossHitAnimation();
+        else playMissAnimation();
+
+        battleEnded = battleManager.getAttacksLeft() <= 0;
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (sensorManager != null && accelerometer != null) {
+            sensorManager.registerListener(shakeListener, accelerometer, SensorManager.SENSOR_DELAY_GAME);
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (sensorManager != null) {
+            sensorManager.unregisterListener(shakeListener);
+        }
     }
 }

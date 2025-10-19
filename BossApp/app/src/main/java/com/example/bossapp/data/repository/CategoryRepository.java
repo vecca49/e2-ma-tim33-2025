@@ -20,7 +20,7 @@ public class CategoryRepository {
         db.collection(COLLECTION_NAME)
                 .add(category)
                 .addOnSuccessListener(documentReference -> {
-                    category.setId(documentReference.getId()); // VAŽNO: Postavi ID
+                    category.setId(documentReference.getId());
                     listener.onSuccess();
                 })
                 .addOnFailureListener(listener::onError);

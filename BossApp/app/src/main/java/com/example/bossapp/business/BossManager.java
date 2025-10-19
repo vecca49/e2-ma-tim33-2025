@@ -86,7 +86,6 @@ public class BossManager {
                 });
     }
 
-
     public boolean shouldShowBoss(User user, Boss boss) {
         if (boss.isDefeated()) return false;
         return user.getLevel() >= boss.getBossNumber();

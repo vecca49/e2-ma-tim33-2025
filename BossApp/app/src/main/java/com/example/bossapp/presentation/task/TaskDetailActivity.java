@@ -93,7 +93,6 @@ public class TaskDetailActivity extends AppCompatActivity {
         if (task.getImportance() != null)
             spImportance.setSelection(task.getImportance().ordinal());
 
-        // Ako je zadatak završen ili odrađen → blokiraj izmene i brisanje
         if (task.getStatus() == Task.TaskStatus.DONE ||
                 task.getStatus() == Task.TaskStatus.NOT_DONE ||
                 (task.isRepeating() && task.getEndDate() != null &&

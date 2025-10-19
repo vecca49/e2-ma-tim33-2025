@@ -93,8 +93,6 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
 
         }
 
-
-
         private void showTaskDetails(Context context, Task task) {
             String details = "Opis: " + task.getDescription() + "\n"
                     + "Kategorija: " + task.getCategoryName() + "\n"

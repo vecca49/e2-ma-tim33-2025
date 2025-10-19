@@ -175,7 +175,6 @@ public class TaskManager {
         LevelManager levelManager = new LevelManager();
         TaskRepository taskRepository = new TaskRepository();
 
-        // Prvo učitaj korisnika
         Log.d(TAG, "Učitavanje korisnika...");
         userManager.getUserById(userId, new UserManager.OnUserLoadListener() {
             @Override
@@ -184,7 +183,6 @@ public class TaskManager {
                 Log.d(TAG, "Trenutni XP: " + user.getXp());
                 Log.d(TAG, "Trenutni Level: " + user.getLevel());
 
-                // Učitaj sve taskove za proveru kvote
                 Log.d(TAG, "Učitavanje taskova za proveru kvote...");
                 taskRepository.getTasksByUser(userId, new TaskRepository.OnTasksLoadListener() {
                     @Override
@@ -327,7 +325,6 @@ public class TaskManager {
                             public void onSuccess() {
                                 Log.d(TAG, "✅ Korisnik uspešno ažuriran sa novim XP!");
 
-                                // *** PRVO: Proveri level up ***
                                 Log.d(TAG, "Proveravam level up...");
                                 levelManager.checkAndProcessLevelUp(user, new LevelManager.OnLevelUpListener() {
                                     @Override
@@ -337,21 +334,18 @@ public class TaskManager {
                                         Log.d(TAG, "Nova titula: " + newTitle);
                                         Log.d(TAG, "Dobijeni PP: " + ppGained);
 
-                                        // NAKON level up-a, označi task
                                         markTaskAsXpAwarded(task, taskRepository);
                                     }
 
                                     @Override
                                     public void onNoLevelUp() {
                                         Log.d(TAG, "Još nije vreme za level up");
-                                        // I dalje označi task kao awarded
                                         markTaskAsXpAwarded(task, taskRepository);
                                     }
 
                                     @Override
                                     public void onError(String message) {
                                         Log.e(TAG, "❌ Greška pri level up proveri: " + message);
-                                        // Ipak pokušaj da označiš task
                                         markTaskAsXpAwarded(task, taskRepository);
                                     }
                                 });
@@ -465,11 +459,6 @@ public class TaskManager {
                     listener.onCalculated(0);
                 });
     }
-
-
-
-
-
 
     public void editTask(Task task, String newName, String newDescription,
                          Timestamp newExecutionTime, Task.Difficulty newDifficulty,
