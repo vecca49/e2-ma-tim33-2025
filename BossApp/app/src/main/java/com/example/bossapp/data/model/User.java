@@ -20,6 +20,8 @@ public class User {
     private List<String> friendIds;
     private String currentAllianceId;
 
+    private int currentBossNumber = 0;
+
     public User() {
         this.friendIds = new ArrayList<>();
     }
@@ -81,6 +83,15 @@ public class User {
 
     public int getPp() { return pp; }
     public void setPp(int pp) { this.pp = pp; }
+
+    public int getCurrentBossNumber() {
+        return currentBossNumber;
+    }
+
+    public void setCurrentBossNumber(int currentBossNumber) {
+        this.currentBossNumber = currentBossNumber;
+    }
+
 
     public int getCoins() { return coins; }
     public void setCoins(int coins) { this.coins = coins; }

@@ -376,7 +376,6 @@ public class TaskManager {
         });
     }
 
-    // *** HELPER METODA - VAN SVIH CALLBACK-OVA ***
     private void markTaskAsXpAwarded(Task task, TaskRepository taskRepository) {
         task.setXpAwarded(true);
         taskRepository.saveTask(task, new TaskRepository.OnTaskSaveListener() {
@@ -388,7 +387,6 @@ public class TaskManager {
             @Override
             public void onError(Exception e) {
                 Log.e(TAG, "❌ Greška pri označavanju taska: " + e.getMessage());
-                // Nije kritično - XP je već dodeljen i level up proveren
             }
         });
     }
@@ -429,6 +427,42 @@ public class TaskManager {
             }
         });
     }
+
+    public void calculateSuccessRate(String userId, OnSuccessRateCalculatedListener listener) {
+        getUserTasks(userId, new OnTasksLoadListener() {
+            @Override
+            public void onSuccess(List<Task> tasks) {
+                int completed = 0;
+                int total = 0;
+
+                for (Task t : tasks) {
+                    if (t.getStatus() == Task.TaskStatus.PAUSED || t.getStatus() == Task.TaskStatus.CANCELED)
+                        continue;
+
+                    if (t.isWithinQuota()) {
+                        total++;
+                        if (t.getStatus() == Task.TaskStatus.DONE) {
+                            completed++;
+                        }
+                    }
+                }
+
+                int successRate = total > 0 ? (completed * 100) / total : 0;
+                listener.onCalculated(successRate);
+            }
+
+            @Override
+            public void onError(String message) {
+                listener.onCalculated(0);
+            }
+        });
+    }
+
+
+    public interface OnSuccessRateCalculatedListener {
+        void onCalculated(int successRate);
+    }
+
 
     public void editTask(Task task, String newName, String newDescription,
                          Timestamp newExecutionTime, Task.Difficulty newDifficulty,

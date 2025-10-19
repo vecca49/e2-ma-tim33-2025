@@ -76,8 +76,9 @@ public class MainActivity extends AppCompatActivity {
                     tag = "STATISTICS";
                 }
                 else if (itemId == R.id.nav_categories) {
-                    Intent intent = new Intent(MainActivity.this, BossFightActivity.class);
+                    Intent intent = new Intent(MainActivity.this, com.example.bossapp.presentation.boss.BossBattleActivity.class);
                     startActivity(intent);
+                    overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
                     return true;
                 }
 
