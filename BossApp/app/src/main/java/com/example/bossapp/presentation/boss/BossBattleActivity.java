@@ -231,17 +231,19 @@ public class BossBattleActivity extends AppCompatActivity {
     private void showResult(int coins, boolean itemDropped) {
         resultLayout.setVisibility(View.VISIBLE);
         chestImage.setImageResource(R.mipmap.ic_chest_closed);
-        rewardText.setText("Osvojio si " + coins + " 🪙 novčića!");
+
+        coinIcon.setVisibility(View.GONE);
+        itemIcon.setVisibility(View.GONE);
+        chestOpened = false;
+
+        chestImage.setTag(new ChestData(coins, itemDropped));
 
         chestImage.setOnClickListener(v -> {
-            if (!chestOpened) {
-                chestOpened = true;
-                chestImage.setImageResource(R.mipmap.ic_chest_open);
-                coinIcon.setVisibility(View.VISIBLE);
-                if (itemDropped) itemIcon.setVisibility(View.VISIBLE);
-            }
+            ChestData data = (ChestData) chestImage.getTag();
+            openChest(data.coins, data.itemDropped);
         });
     }
+
 
     private final SensorEventListener shakeListener = new SensorEventListener() {
         @Override
@@ -261,9 +263,18 @@ public class BossBattleActivity extends AppCompatActivity {
 
                 Log.d("SHAKE", "speed=" + speed);
 
-                if (speed > SHAKE_THRESHOLD && battleManager != null && !battleEnded) {
+                if (speed > SHAKE_THRESHOLD) {
                     lastShakeTime = currentTime;
-                    performShakeAttack();
+
+                    if (!battleEnded) {
+                        performShakeAttack();
+                    } else if (resultLayout.getVisibility() == View.VISIBLE && !chestOpened) {
+                        ChestData data = (ChestData) chestImage.getTag();
+                        if (data != null) {
+                            openChest(data.coins, data.itemDropped);
+                        }
+                    }
+
                 }
 
                 lastX = x;
@@ -275,6 +286,34 @@ public class BossBattleActivity extends AppCompatActivity {
         @Override
         public void onAccuracyChanged(Sensor sensor, int accuracy) {}
     };
+
+    private void openChest(int coins, boolean itemDropped) {
+        if (chestOpened) return;
+
+        chestOpened = true;
+        chestImage.setImageResource(R.mipmap.ic_chest_open_foreground);
+
+        ObjectAnimator shake = ObjectAnimator.ofFloat(chestImage, "translationX", 0, 25, -25, 0);
+        shake.setDuration(400);
+        shake.start();
+
+        coinIcon.setVisibility(View.VISIBLE);
+        if (itemDropped) itemIcon.setVisibility(View.VISIBLE);
+
+        rewardText.setText("Osvojio si " + coins + " 🪙 novčića!");
+    }
+
+    private static class ChestData {
+        int coins;
+        boolean itemDropped;
+
+        ChestData(int coins, boolean itemDropped) {
+            this.coins = coins;
+            this.itemDropped = itemDropped;
+        }
+    }
+
+
 
     private void performShakeAttack() {
         if (battleManager == null || battleEnded) return;
