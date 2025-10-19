@@ -46,7 +46,6 @@ public class CategoryRepository {
 
     public void getCategoriesForUser(String userId, OnGetCategoriesListener listener) {
         db.collection(COLLECTION_NAME)
-                .whereEqualTo("ownerId", userId)
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
                     List<Category> list = queryDocumentSnapshots.toObjects(Category.class);
