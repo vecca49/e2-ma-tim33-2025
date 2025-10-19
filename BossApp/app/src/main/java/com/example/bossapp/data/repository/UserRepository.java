@@ -30,44 +30,42 @@ public class UserRepository {
         void onError(Exception e);
     }
 
-    // Provera da li username već postoji
     public void checkUsernameExists(String username, OnUserCheckListener listener) {
-        Log.d(TAG, "Provera username-a: " + username);
+        Log.d(TAG, "Username verification: " + username);
 
         db.collection(COLLECTION_USERS)
                 .whereEqualTo("username", username)
                 .get()
                 .addOnSuccessListener(querySnapshot -> {
                     boolean exists = !querySnapshot.isEmpty();
-                    Log.d(TAG, "Username postoji: " + exists);
+                    Log.d(TAG, "Username exists: " + exists);
                     listener.onResult(exists);
                 })
                 .addOnFailureListener(e -> {
-                    Log.e(TAG, "Greška pri proveri username-a", e);
+                    Log.e(TAG, "Error checking username", e);
                     listener.onError(e);
                 });
     }
 
-    // Čuvanje korisnika u Firestore
     public void saveUser(User user, OnUserSaveListener listener) {
-        Log.d(TAG, "Čuvanje korisnika: " + user.getUsername());
+        Log.d(TAG, "Saving user: " + user.getUsername());
 
         db.collection(COLLECTION_USERS)
                 .document(user.getUserId())
                 .set(user.toMap())
                 .addOnSuccessListener(aVoid -> {
-                    Log.d(TAG, "Korisnik uspešno sačuvan");
+                    Log.d(TAG, "User successfully saved");
                     listener.onSuccess();
                 })
                 .addOnFailureListener(e -> {
-                    Log.e(TAG, "Greška pri čuvanju korisnika", e);
+                    Log.e(TAG, "Error saving user", e);
                     listener.onError(e);
                 });
     }
 
     // Učitavanje korisnika iz Firestore
     public void getUserById(String userId, OnUserLoadListener listener) {
-        Log.d(TAG, "Učitavanje korisnika: " + userId);
+        Log.d(TAG, "Loading user: " + userId);
 
         db.collection(COLLECTION_USERS)
                 .document(userId)
@@ -75,15 +73,15 @@ public class UserRepository {
                 .addOnSuccessListener(documentSnapshot -> {
                     if (documentSnapshot.exists()) {
                         User user = documentSnapshot.toObject(User.class);
-                        Log.d(TAG, "Korisnik učitan: " + user.getUsername());
+                        Log.d(TAG, "User loaded: " + user.getUsername());
                         listener.onSuccess(user);
                     } else {
-                        Log.e(TAG, "Korisnik ne postoji");
-                        listener.onError(new Exception("Korisnik ne postoji"));
+                        Log.e(TAG, "User does not exist.");
+                        listener.onError(new Exception("User does not exist."));
                     }
                 })
                 .addOnFailureListener(e -> {
-                    Log.e(TAG, "Greška pri učitavanju korisnika", e);
+                    Log.e(TAG, "Error loading user", e);
                     listener.onError(e);
                 });
     }

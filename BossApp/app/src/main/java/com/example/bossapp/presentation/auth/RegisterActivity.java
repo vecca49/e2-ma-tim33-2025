@@ -31,7 +31,7 @@ public class RegisterActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Omogući automatic resize kada se tastatura prikaže
+        // Enable automatic resize when the keyboard is displayed
         getWindow().setSoftInputMode(
                 WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE |
                         WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN
@@ -88,24 +88,24 @@ public class RegisterActivity extends AppCompatActivity {
         String password = etPassword.getText().toString().trim();
         String confirmPassword = etConfirmPassword.getText().toString().trim();
 
-        // Validacija
+        // Validation
         if (!validateInputs(email, username, password, confirmPassword)) {
             return;
         }
 
-        // Prikaži progress
+        // Show progress
         btnRegister.setEnabled(false);
-        btnRegister.setText("Registracija...");
+        btnRegister.setText("Registration...");
 
         authManager.registerUser(email, password, username, selectedAvatarIndex,
                 new AuthManager.OnRegistrationListener() {
                     @Override
                     public void onSuccess() {
                         Toast.makeText(RegisterActivity.this,
-                                "Registracija uspešna! Proveri email za verifikaciju.",
+                                "Registration successful! Check your email for verification.",
                                 Toast.LENGTH_LONG).show();
 
-                        // Prebaci korisnika na Login ekran
+                        // Switch the user to the Login screen
                         Intent intent = new Intent(RegisterActivity.this, LoginActivity.class);
                         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                         startActivity(intent);
@@ -115,9 +115,9 @@ public class RegisterActivity extends AppCompatActivity {
                     @Override
                     public void onUsernameExists() {
                         btnRegister.setEnabled(true);
-                        btnRegister.setText("Registruj se");
+                        btnRegister.setText("Register");
                         Toast.makeText(RegisterActivity.this,
-                                "Korisničko ime već postoji",
+                                "Username already exists.",
                                 Toast.LENGTH_SHORT).show();
                     }
 
@@ -132,48 +132,48 @@ public class RegisterActivity extends AppCompatActivity {
 
     private boolean validateInputs(String email, String username,
                                    String password, String confirmPassword) {
-        // Email validacija
+        // Email validation
         if (TextUtils.isEmpty(email)) {
-            etEmail.setError("Email je obavezan");
+            etEmail.setError("Email is required");
             etEmail.requestFocus();
             return false;
         }
 
         if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-            etEmail.setError("Unesite ispravnu email adresu");
+            etEmail.setError("Please enter a valid email address.");
             etEmail.requestFocus();
             return false;
         }
 
-        // Username validacija
+        // Username validation
         if (TextUtils.isEmpty(username)) {
-            etUsername.setError("Korisničko ime je obavezno");
+            etUsername.setError("Username is required.");
             etUsername.requestFocus();
             return false;
         }
 
         if (username.length() < 3) {
-            etUsername.setError("Korisničko ime mora imati najmanje 3 karaktera");
+            etUsername.setError("Username must be at least 3 characters long");
             etUsername.requestFocus();
             return false;
         }
 
-        // Password validacija
+        // Password validation
         if (TextUtils.isEmpty(password)) {
-            etPassword.setError("Lozinka je obavezna");
+            etPassword.setError("Password is required.");
             etPassword.requestFocus();
             return false;
         }
 
         if (password.length() < 6) {
-            etPassword.setError("Lozinka mora imati najmanje 6 karaktera");
+            etPassword.setError("Password must have at least 6 characters");
             etPassword.requestFocus();
             return false;
         }
 
-        // Confirm password validacija
+        // Confirm password validation
         if (!password.equals(confirmPassword)) {
-            etConfirmPassword.setError("Lozinke se ne poklapaju");
+            etConfirmPassword.setError("Passwords do not match.");
             etConfirmPassword.requestFocus();
             return false;
         }

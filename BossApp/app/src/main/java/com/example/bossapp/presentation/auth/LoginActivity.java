@@ -41,7 +41,7 @@ public class LoginActivity extends AppCompatActivity {
             }
         });
 
-        // Proveri da li je korisnik već ulogovan
+        // Check if the user is already logged in
         if (authManager.isUserLoggedIn()) {
             navigateToMainActivity();
         }
@@ -63,7 +63,7 @@ public class LoginActivity extends AppCompatActivity {
         });
 
         tvForgotPassword.setOnClickListener(v -> {
-            Toast.makeText(this, "Reset lozinke - biće implementiran uskoro", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Password reset - will be implemented soon", Toast.LENGTH_SHORT).show();
             // TODO: Implementiraj ForgotPasswordActivity
         });
     }
@@ -72,20 +72,20 @@ public class LoginActivity extends AppCompatActivity {
         String email = etEmail.getText().toString().trim();
         String password = etPassword.getText().toString().trim();
 
-        // Validacija
+        // Validation
         if (!validateInputs(email, password)) {
             return;
         }
 
-        // Prikaži progress
+        // Show progress
         btnLogin.setEnabled(false);
-        btnLogin.setText("Prijavljivanje...");
+        btnLogin.setText("Logging in...");
 
         authManager.loginUser(email, password, new AuthManager.OnLoginListener() {
             @Override
             public void onSuccess(com.example.bossapp.data.model.User user) {
                 Toast.makeText(LoginActivity.this,
-                        "Dobrodošao/la, " + user.getUsername() + "!",
+                        "Welcome, " + user.getUsername() + "!",
                         Toast.LENGTH_SHORT).show();
                 navigateToMainActivity();
             }
@@ -93,38 +93,38 @@ public class LoginActivity extends AppCompatActivity {
             @Override
             public void onEmailNotVerified() {
                 btnLogin.setEnabled(true);
-                btnLogin.setText("Prijavi se");
+                btnLogin.setText("Login");
                 Toast.makeText(LoginActivity.this,
-                        "Molimo verifikujte email adresu. Proverite inbox.",
+                        "Please verify your email address. Check your inbox.",
                         Toast.LENGTH_LONG).show();
             }
 
             @Override
             public void onError(String message) {
                 btnLogin.setEnabled(true);
-                btnLogin.setText("Prijavi se");
+                btnLogin.setText("Login");
                 Toast.makeText(LoginActivity.this, message, Toast.LENGTH_LONG).show();
             }
         });
     }
 
     private boolean validateInputs(String email, String password) {
-        // Email validacija
+        // Email validation
         if (TextUtils.isEmpty(email)) {
-            etEmail.setError("Email je obavezan");
+            etEmail.setError("Email is required");
             etEmail.requestFocus();
             return false;
         }
 
         if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-            etEmail.setError("Unesite ispravnu email adresu");
+            etEmail.setError("Please enter a valid email address.");
             etEmail.requestFocus();
             return false;
         }
 
-        // Password validacija
+        // Password validation
         if (TextUtils.isEmpty(password)) {
-            etPassword.setError("Lozinka je obavezna");
+            etPassword.setError("Password is required");
             etPassword.requestFocus();
             return false;
         }
@@ -139,9 +139,5 @@ public class LoginActivity extends AppCompatActivity {
         finish();
     }
 
-    /*@Override
-    public void onBackPressed() {
-        super.onBackPressed();
-        finishAffinity();
-    }*/
+
 }

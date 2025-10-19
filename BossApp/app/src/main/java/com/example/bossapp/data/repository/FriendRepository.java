@@ -180,6 +180,84 @@ public class FriendRepository {
     }
 
     public void removeFriend(String userId, String friendId, OnFriendRequestListener listener) {
+        // First, check if userId is a leader and friendId is in their alliance
+        db.collection(COLLECTION_USERS).document(userId)
+                .get()
+                .addOnSuccessListener(userDoc -> {
+                    User user = userDoc.toObject(User.class);
+                    if (user != null && user.getCurrentAllianceId() != null) {
+                        // Check if user is the leader of their alliance
+                        db.collection("alliances").document(user.getCurrentAllianceId())
+                                .get()
+                                .addOnSuccessListener(allianceDoc -> {
+                                    if (allianceDoc.exists()) {
+                                        String leaderId = allianceDoc.getString("leaderId");
+                                        List<String> memberIds = (List<String>) allianceDoc.get("memberIds");
+
+                                        // If userId is leader AND friendId is in the alliance
+                                        if (leaderId != null && leaderId.equals(userId) &&
+                                                memberIds != null && memberIds.contains(friendId)) {
+
+                                            // Remove friend from alliance first
+                                            removeFromAlliance(user.getCurrentAllianceId(), friendId,
+                                                    new OnFriendRequestListener() {
+                                                        @Override
+                                                        public void onSuccess() {
+                                                            // Then remove friendship
+                                                            removeFriendshipOnly(userId, friendId, listener);
+                                                        }
+
+                                                        @Override
+                                                        public void onError(Exception e) {
+                                                            // Even if alliance removal fails, still remove friendship
+                                                            removeFriendshipOnly(userId, friendId, listener);
+                                                        }
+                                                    });
+                                            return;
+                                        }
+                                    }
+
+                                    // If not leader or friend not in alliance, just remove friendship
+                                    removeFriendshipOnly(userId, friendId, listener);
+                                })
+                                .addOnFailureListener(e -> removeFriendshipOnly(userId, friendId, listener));
+                    } else {
+                        // User has no alliance, just remove friendship
+                        removeFriendshipOnly(userId, friendId, listener);
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Error checking user alliance", e);
+                    // Even on error, try to remove friendship
+                    removeFriendshipOnly(userId, friendId, listener);
+                });
+    }
+
+    // 🟢 NOVA HELPER METODA - UKLONI IZ SAVEZA
+    private void removeFromAlliance(String allianceId, String memberId, OnFriendRequestListener listener) {
+        WriteBatch batch = db.batch();
+
+        // Remove from alliance members
+        batch.update(db.collection("alliances").document(allianceId),
+                "memberIds", FieldValue.arrayRemove(memberId));
+
+        // Remove alliance from user
+        batch.update(db.collection(COLLECTION_USERS).document(memberId),
+                "currentAllianceId", null);
+
+        batch.commit()
+                .addOnSuccessListener(aVoid -> {
+                    Log.d(TAG, "Member removed from alliance");
+                    listener.onSuccess();
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Error removing from alliance", e);
+                    listener.onError(e);
+                });
+    }
+
+    // 🟢 NOVA HELPER METODA - UKLONI PRIJATELJSTVO
+    private void removeFriendshipOnly(String userId, String friendId, OnFriendRequestListener listener) {
         WriteBatch batch = db.batch();
 
         batch.update(db.collection(COLLECTION_USERS).document(userId),
@@ -198,7 +276,6 @@ public class FriendRepository {
                     listener.onError(e);
                 });
     }
-
     public void getFriends(String userId, UserRepository.OnUsersLoadListener listener) {
         db.collection(COLLECTION_USERS)
                 .document(userId)
