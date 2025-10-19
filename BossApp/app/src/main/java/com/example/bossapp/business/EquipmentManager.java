@@ -122,37 +122,130 @@ public class EquipmentManager {
 
     // Decrease duration after boss fight
     public void processFightEnd(String userId, EquipmentRepository.OnEquipmentListener listener) {
+        Log.d(TAG, "🔵 =======================================");
+        Log.d(TAG, "🔵 PROCESS FIGHT END CALLED");
+        Log.d(TAG, "🔵 User ID: " + userId);
+        Log.d(TAG, "🔵 =======================================");
+
         equipmentRepository.getActiveEquipment(userId, new EquipmentRepository.OnEquipmentListListener() {
             @Override
             public void onSuccess(List<Equipment> equipmentList) {
+                if (equipmentList.isEmpty()) {
+                    Log.d(TAG, "No active equipment to process");
+                    listener.onSuccess();
+                    return;
+                }
+
+                final int[] processedCount = {0};
+                final int totalEquipment = equipmentList.size();
+
                 for (Equipment equipment : equipmentList) {
+                    // CHECK IF THERE IS DURATION (temp potions and armor have them, weapons don't)
                     if (equipment.getRemainingDuration() > 0) {
+                        // Decrease duration by 1
                         equipment.setRemainingDuration(equipment.getRemainingDuration() - 1);
 
+                        Log.d(TAG, equipment.getDisplayName() + " duration: " +
+                                (equipment.getRemainingDuration() + 1) + " -> " + equipment.getRemainingDuration());
+
+                        // IF DURATION IS NOW 0, DEACTIVATE EQUIPMENT
                         if (equipment.getRemainingDuration() == 0) {
                             equipment.setIsActive(false);
-                            Log.d(TAG, equipment.getDisplayName() + " expired");
+                            Log.d(TAG, "❌ " + equipment.getDisplayName() + " EXPIRED and deactivated!");
+
+                            // -------------------------------
+                            // AKO JE TEMP POTION, OBRIŠI GA POTPUNO
+                            if (equipment.getType() == Equipment.EquipmentType.POTION) {
+                                Equipment.PotionType potion = Equipment.PotionType.valueOf(equipment.getSubType());
+                                if (potion.isTemporary) {
+                                    Log.d(TAG, "🗑️ Deleting temporary potion: " + equipment.getDisplayName());
+                                    equipmentRepository.deleteEquipment(equipment.getEquipmentId(),
+                                            new EquipmentRepository.OnEquipmentListener() {
+                                                @Override
+                                                public void onSuccess() {
+                                                    Log.d(TAG, "✅ Temp potion deleted successfully");
+                                                    processedCount[0]++;
+                                                    if (processedCount[0] == totalEquipment) {
+                                                        listener.onSuccess();
+                                                    }
+                                                }
+
+                                                @Override
+                                                public void onError(String message) {
+                                                    Log.e(TAG, "❌ Error deleting temp potion: " + message);
+                                                    processedCount[0]++;
+                                                    if (processedCount[0] == totalEquipment) {
+                                                        listener.onSuccess();
+                                                    }
+                                                }
+                                            });
+                                    continue; // Skip the update, we have already deleted
+                                }
+                            }
+// 🟢 DODATO - OBRIŠI ARMOR NAKON ŠTO DURATION DOSTIGNE 0
+                            else if (equipment.getType() == Equipment.EquipmentType.ARMOR) {
+                                Log.d(TAG, "🗑️ Deleting expired armor: " + equipment.getDisplayName());
+                                equipmentRepository.deleteEquipment(equipment.getEquipmentId(),
+                                        new EquipmentRepository.OnEquipmentListener() {
+                                            @Override
+                                            public void onSuccess() {
+                                                Log.d(TAG, "✅ Armor deleted successfully");
+                                                processedCount[0]++;
+                                                if (processedCount[0] == totalEquipment) {
+                                                    listener.onSuccess();
+                                                }
+                                            }
+
+                                            @Override
+                                            public void onError(String message) {
+                                                Log.e(TAG, "❌ Error deleting armor: " + message);
+                                                processedCount[0]++;
+                                                if (processedCount[0] == totalEquipment) {
+                                                    listener.onSuccess();
+                                                }
+                                            }
+                                        });
+                                continue; // Skip the update, we have already deleted
+                            }
+                            //----------------------------------------------
                         }
 
+                        // Update equipment in Firestore
                         equipmentRepository.updateEquipment(equipment,
                                 new EquipmentRepository.OnEquipmentListener() {
                                     @Override
                                     public void onSuccess() {
-                                        Log.d(TAG, "Duration updated for " + equipment.getDisplayName());
+                                        Log.d(TAG, "✅ Duration updated for " + equipment.getDisplayName());
+                                        processedCount[0]++;
+                                        if (processedCount[0] == totalEquipment) {
+                                            listener.onSuccess();
+                                        }
                                     }
 
                                     @Override
                                     public void onError(String message) {
-                                        Log.e(TAG, "Error updating duration: " + message);
+                                        Log.e(TAG, "❌ Error updating duration: " + message);
+                                        processedCount[0]++;
+                                        if (processedCount[0] == totalEquipment) {
+                                            listener.onSuccess();
+                                        }
                                     }
                                 });
+
+                    } else {
+                        // Permanent equipment (weapons, perm potions) - bez duration-a
+                        Log.d(TAG, equipment.getDisplayName() + " is permanent, no duration to decrease");
+                        processedCount[0]++;
+                        if (processedCount[0] == totalEquipment) {
+                            listener.onSuccess();
+                        }
                     }
                 }
-                listener.onSuccess();
             }
 
             @Override
             public void onError(String message) {
+                Log.e(TAG, "❌ Error loading active equipment: " + message);
                 listener.onError(message);
             }
         });

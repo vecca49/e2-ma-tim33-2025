@@ -17,6 +17,7 @@ import com.example.bossapp.data.model.Equipment;
 import com.example.bossapp.data.model.User;
 import com.example.bossapp.data.repository.EquipmentRepository;
 import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.tabs.TabLayout;
 import com.google.firebase.auth.FirebaseAuth;
 
@@ -54,6 +55,7 @@ public class InventoryActivity extends AppCompatActivity {
 
         loadUserData();
         setupTabs();
+        setupBottomNavigation();
     }
 
     private void initViews() {
@@ -287,5 +289,34 @@ public class InventoryActivity extends AppCompatActivity {
                         Toast.makeText(InventoryActivity.this, message, Toast.LENGTH_SHORT).show();
                     }
                 });
+    }
+
+    private void setupBottomNavigation() {
+        BottomNavigationView bottomNav = findViewById(R.id.bottomNavigation);
+        bottomNav.setOnItemSelectedListener(item -> {
+            int itemId = item.getItemId();
+
+            if (itemId == R.id.nav_home) {
+                finish();
+                return true;
+            } else if (itemId == R.id.nav_profile) {
+                finish();
+                return true;
+            } else if (itemId == R.id.nav_statistics) {
+                finish();
+                return true;
+            } else if (itemId == R.id.nav_alliance) {
+                finish();
+                return true;
+            } else if (itemId == R.id.nav_categories) {
+                finish();
+                return true;
+            } else if (itemId == R.id.nav_tasks) {
+                finish();
+                return true;
+            }
+
+            return false;
+        });
     }
 }

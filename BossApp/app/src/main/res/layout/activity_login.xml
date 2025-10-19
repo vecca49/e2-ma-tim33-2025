@@ -18,7 +18,7 @@
             android:layout_height="wrap_content"
             android:padding="24dp">
 
-            <!-- Logo ili naslov -->
+            <!-- Logo or title -->
             <TextView
                 android:id="@+id/tvTitle"
                 android:layout_width="wrap_content"
@@ -75,7 +75,7 @@
                     android:id="@+id/etPassword"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Lozinka"
+                    android:hint="Password"
                     android:inputType="textPassword"
                     android:imeOptions="actionDone"/>
 
@@ -86,7 +86,7 @@
                 android:id="@+id/tvForgotPassword"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Zaboravljena lozinka?"
+                android:text="Forgot password?"
                 android:textColor="@color/primary"
                 android:layout_marginTop="8dp"
                 android:padding="8dp"
@@ -98,7 +98,7 @@
                 android:id="@+id/btnLogin"
                 android:layout_width="0dp"
                 android:layout_height="60dp"
-                android:text="Prijavi se"
+                android:text="Login"
                 android:textSize="16sp"
                 android:layout_marginTop="24dp"
                 app:cornerRadius="8dp"
@@ -122,14 +122,14 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Nemaš nalog? "
+                    android:text="You don't have an account? "
                     android:textSize="14sp"/>
 
                 <TextView
                     android:id="@+id/tvRegister"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Registruj se"
+                    android:text="Register"
                     android:textColor="@color/primary"
                     android:textStyle="bold"
                     android:textSize="14sp"
